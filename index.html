@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Summary Tool</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Material UI Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Executive Summary Tool</h1>
+            <div class="header-actions">
+                <div id="auto-save-status" class="auto-save-status">
+                    <span class="material-icons">cloud_done</span>
+                    <span class="status-text">Auto-saved</span>
+                </div>
+                <button id="save-btn" class="btn btn-primary">Save</button>
+                <button id="test-btn" class="btn btn-test">Fill Test Data</button>
+                <button id="clear-btn" class="btn btn-clear">Clear All</button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Tab Navigation -->
+            <div class="tab-navigation">
+                <button class="tab-btn active" id="add-new-tab" onclick="switchTab('add-new')">Add New Report</button>
+                <button class="tab-btn" id="view-only-tab" onclick="switchTab('view-only')">View-Only</button>
+            </div>
+
+            <!-- Add New Report Content -->
+            <div id="add-new-content" class="tab-content active">
+                <!-- YIELD Section -->
+                <section class="main-section" id="yield-section">
+                    <div class="section-header">
+                        <h2 contenteditable="true">YIELD</h2>
+                        <button class="collapse-btn" onclick="toggleSection('yield-section')">−</button>
+                    </div>
+                    <div class="section-content">
+                        <!-- Week-over-Week Performance Trends -->
+                        <div class="subsection" id="wow-performance">
+                            <div class="subsection-header">
+                                <h3 contenteditable="true">WEEK-OVER-WEEK PERFORMANCE TRENDS</h3>
+                                <button class="add-table-btn"
+                                    onclick="addTable('wow-performance', 'performance-trends')"
+                                    title="Add new table"><span class="material-icons">add</span> Add Table</button>
+                            </div>
+                            <div class="tables-container" id="wow-performance-tables">
+                                <!-- Tables will be dynamically added here -->
+                            </div>
+                        </div>
+
+                        <!-- A/B Test Updates -->
+                        <div class="subsection" id="ab-test">
+                            <div class="subsection-header">
+                                <h3 contenteditable="true">A/B TEST UPDATES</h3>
+                                <button class="add-table-btn" onclick="addTable('ab-test', 'ab-test-updates')"
+                                    title="Add new table"><span class="material-icons">add</span> Add Table</button>
+                            </div>
+                            <div class="tables-container" id="ab-test-tables">
+                                <!-- Tables will be dynamically added here -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ONBOARDING Section -->
+                <section class="main-section" id="onboarding-section">
+                    <div class="section-header">
+                        <h2 contenteditable="true">ONBOARDING</h2>
+                        <button class="collapse-btn" onclick="toggleSection('onboarding-section')">−</button>
+                    </div>
+                    <div class="section-content">
+                        <!-- Newly Onboarded Publishers -->
+                        <div class="subsection" id="newly-onboarded">
+                            <div class="subsection-header">
+                                <h3 contenteditable="true">NEWLY ONBOARDED PUBLISHERS</h3>
+                                <button class="add-table-btn"
+                                    onclick="addTable('newly-onboarded', 'newly-onboarded-publishers')"
+                                    title="Add new table"><span class="material-icons">add</span> Add Table</button>
+                            </div>
+                            <div class="tables-container" id="newly-onboarded-tables">
+                                <!-- Tables will be dynamically added here -->
+                            </div>
+                        </div>
+
+                        <!-- In-Progress Publishers -->
+                        <div class="subsection" id="in-progress">
+                            <div class="subsection-header">
+                                <h3 contenteditable="true">IN-PROGRESS PUBLISHERS</h3>
+                                <button class="add-table-btn"
+                                    onclick="addTable('in-progress', 'in-progress-publishers')"
+                                    title="Add new table"><span class="material-icons">add</span> Add Table</button>
+                            </div>
+                            <div class="tables-container" id="in-progress-tables">
+                                <!-- Tables will be dynamically added here -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CUSTOMER SUCCESS Section -->
+                <section class="main-section" id="customer-success-section">
+                    <div class="section-header">
+                        <h2 contenteditable="true">CUSTOMER SUCCESS</h2>
+                        <button class="collapse-btn" onclick="toggleSection('customer-success-section')">−</button>
+                    </div>
+                    <div class="section-content">
+                        <!-- Net Promoter Score -->
+                        <div class="subsection" id="nps">
+                            <div class="subsection-header">
+                                <h3 contenteditable="true">NET PROMOTER SCORE (NPS)</h3>
+                                <button class="add-table-btn" onclick="addTable('nps', 'nps-data')"
+                                    title="Add new table"><span class="material-icons">add</span> Add Table</button>
+                            </div>
+                            <div class="tables-container" id="nps-tables">
+                                <!-- Tables will be dynamically added here -->
+                            </div>
+                        </div>
+
+                        <!-- Recently Churned -->
+                        <div class="subsection" id="recently-churned">
+                            <div class="subsection-header">
+                                <h3 contenteditable="true">RECENTLY CHURNED (MTD)</h3>
+                                <button class="add-table-btn" onclick="addTable('recently-churned', 'churned-data')"
+                                    title="Add new table"><span class="material-icons">add</span> Add Table</button>
+                            </div>
+                            <div class="tables-container" id="recently-churned-tables">
+                                <!-- Tables will be dynamically added here -->
+                            </div>
+                        </div>
+
+                        <!-- Recently Gave Notice -->
+                        <div class="subsection" id="gave-notice">
+                            <div class="subsection-header">
+                                <h3 contenteditable="true">RECENTLY GAVE NOTICE (MTD)</h3>
+                                <button class="add-table-btn" onclick="addTable('gave-notice', 'notice-data')"
+                                    title="Add new table"><span class="material-icons">add</span> Add Table</button>
+                            </div>
+                            <div class="tables-container" id="gave-notice-tables">
+                                <!-- Tables will be dynamically added here -->
+                            </div>
+                        </div>
+
+                        <!-- Publisher Issues/Updates -->
+                        <div class="subsection" id="publisher-issues">
+                            <div class="subsection-header">
+                                <h3 contenteditable="true">PUBLISHER ISSUES/UPDATES</h3>
+                                <button class="add-table-btn"
+                                    onclick="addTable('publisher-issues', 'publisher-updates')"
+                                    title="Add new table"><span class="material-icons">add</span> Add Table</button>
+                            </div>
+                            <div class="tables-container" id="publisher-issues-tables">
+                                <!-- Tables will be dynamically added here -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- View-Only Content -->
+            <div id="view-only-content" class="tab-content">
+                <div class="saved-reports-container">
+                    <h2>Saved Reports</h2>
+                    <div id="saved-reports-list" class="saved-reports-list">
+                        <!-- Saved reports will be displayed here -->
+                    </div>
+                </div>
+
+                <!-- Report Viewer -->
+                <div id="report-viewer" class="report-viewer" style="display: none;">
+                    <div class="report-viewer-header">
+                        <button class="btn btn-secondary" onclick="backToReportsList()">← Back to Reports</button>
+                    </div>
+                    <div id="viewed-report-content" class="viewed-report-content">
+                        <!-- Selected report content will be displayed here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Custom Modal -->
+    <div id="custom-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Confirmation</h3>
+            </div>
+            <div class="modal-body">
+                <p id="modal-message">Are you sure?</p>
+            </div>
+            <div class="modal-footer">
+                <button id="modal-cancel" class="btn btn-secondary">Cancel</button>
+                <button id="modal-confirm" class="btn btn-primary">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Info Modal -->
+    <div id="info-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="info-modal-title">Success</h3>
+            </div>
+            <div class="modal-body">
+                <div class="modal-icon">
+                    <span class="material-icons" id="info-modal-icon">check_circle</span>
+                </div>
+                <p id="info-modal-message">Operation completed successfully!</p>
+            </div>
+            <div class="modal-footer">
+                <button id="info-modal-ok" class="btn btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
