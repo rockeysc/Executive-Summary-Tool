@@ -1505,6 +1505,10 @@ header h1 {
     padding: 8px 12px;
     border-radius: 4px;
     border: 1px solid transparent;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .mobile-editable:focus {
@@ -1524,11 +1528,15 @@ header h1 {
     min-height: 24px;
     display: flex;
     align-items: center;
+    justify-content: center;
+    text-align: center;
   }
 
   .mobile-row-data.mobile-editable {
     width: 100%;
     min-height: 36px;
+    justify-content: center;
+    text-align: center;
   }
 
   /* Make metric data areas more clickable */
@@ -1559,12 +1567,34 @@ header h1 {
     content: "Tap to edit...";
     color: #999;
     font-style: italic;
+    text-align: center;
   }
 
   .metric-data.mobile-editable[contenteditable="true"]:empty:before {
     content: "Tap to edit...";
     color: #999;
     font-style: italic;
+    text-align: center;
+  }
+
+  /* Ensure all editable content in ADD NEW REPORT mobile cards is centered */
+  #add-new-content .mobile-row-data {
+    text-align: center !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #add-new-content .mobile-editable {
+    text-align: center !important;
+    justify-content: center;
+  }
+
+  #add-new-content .mobile-editable[contenteditable="true"] {
+    text-align: center !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   /* Special styling for performance trends mobile cards */

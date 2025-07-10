@@ -1516,26 +1516,40 @@ function loadData() {
       const data = JSON.parse(savedData);
       console.log("Loading saved data:", data);
 
-      // Clear existing tables first
+      // Clear existing tables first to prevent duplicates
       clearAllTablesOnly();
+      console.log("Cleared tables before loading saved data");
 
-      // Restore data to each section
-      Object.keys(data).forEach((sectionId) => {
-        const section = data[sectionId];
-        if (section.subsections) {
-          Object.keys(section.subsections).forEach((subsectionId) => {
-            const subsection = section.subsections[subsectionId];
-            if (subsection.tables && subsection.tables.length > 0) {
-              // Restore tables for this subsection
-              restoreTablesForSubsection(subsectionId, subsection.tables);
-            }
-          });
-        }
-      });
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        let totalTablesRestored = 0;
 
-      console.log("Data loaded successfully");
+        // Restore data to each section
+        Object.keys(data).forEach((sectionId) => {
+          const section = data[sectionId];
+          if (section.subsections) {
+            Object.keys(section.subsections).forEach((subsectionId) => {
+              const subsection = section.subsections[subsectionId];
+              if (subsection.tables && subsection.tables.length > 0) {
+                console.log(
+                  `Restoring ${subsection.tables.length} table(s) for ${subsectionId}`
+                );
+                // Restore tables for this subsection
+                restoreTablesForSubsection(subsectionId, subsection.tables);
+                totalTablesRestored += subsection.tables.length;
+              }
+            });
+          }
+        });
+
+        console.log(
+          `Data loaded successfully - restored ${totalTablesRestored} tables total`
+        );
+      }, 50);
     } catch (error) {
       console.error("Error loading saved data:", error);
+      // If loading fails, clear tables to prevent duplicates
+      clearAllTablesOnly();
     }
   }
 }
@@ -1543,6 +1557,7 @@ function loadData() {
 // Function to clear all tables without showing confirmation
 function clearAllTablesOnly() {
   const tableWrappers = document.querySelectorAll(".table-wrapper");
+  console.log(`Clearing ${tableWrappers.length} existing table(s)`);
   tableWrappers.forEach((wrapper) => {
     wrapper.remove();
   });
@@ -2077,8 +2092,20 @@ async function clearAllData() {
   await showCustomAlert("All data has been cleared!", "Success", "success");
 }
 
+// Flag to prevent multiple initializations
+let isInitialized = false;
+
 // Initialize the application
 document.addEventListener("DOMContentLoaded", function () {
+  // Prevent multiple initializations
+  if (isInitialized) {
+    console.log("Application already initialized, skipping...");
+    return;
+  }
+  isInitialized = true;
+
+  console.log("Initializing application...");
+
   // Add event listeners to buttons
   document
     .getElementById("save-btn")
@@ -2090,15 +2117,21 @@ document.addEventListener("DOMContentLoaded", function () {
     .getElementById("clear-btn")
     .addEventListener("click", () => clearAllData());
 
+  // Clear any existing tables first to prevent duplicates
+  clearAllTablesOnly();
+  console.log("Cleared existing tables");
+
   // Check if we have saved data first
   const savedData = localStorage.getItem("executiveSummaryData");
 
   if (savedData) {
+    console.log("Found saved data, loading...");
     // Load saved data if available
     setTimeout(() => {
       loadData();
     }, 100);
   } else {
+    console.log("No saved data found, adding default tables...");
     // Add initial tables for demonstration only if no saved data exists
     setTimeout(() => {
       addTable("wow-performance", "performance-trends");
@@ -2109,6 +2142,7 @@ document.addEventListener("DOMContentLoaded", function () {
       addTable("recently-churned", "churned-data");
       addTable("gave-notice", "notice-data");
       addTable("publisher-issues", "publisher-updates");
+      console.log("Default tables added");
     }, 100);
   }
 
