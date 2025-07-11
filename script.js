@@ -1400,51 +1400,19 @@ async function saveAsHistoricalReport(data) {
       savedReports.splice(50);
     }
 
-    // Save back to Gist (this will create the file if it doesn't exist)
-    const token = prompt(
-      "Enter your GitHub token to save this report for all users (or cancel to save locally only):"
+    // For now, just save locally (you can manually update the Gist when needed)
+    const localReports = JSON.parse(
+      localStorage.getItem("savedReports") || "[]"
     );
-
-    if (token) {
-      const updateResponse = await fetch(
-        `https://api.github.com/gists/${GIST_ID}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `token ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            files: {
-              "saved-reports.json": {
-                content: JSON.stringify(savedReports, null, 2),
-              },
-            },
-          }),
-        }
-      );
-
-      if (updateResponse.ok) {
-        console.log("Report saved to shared storage successfully");
-        // Also refresh the saved reports display
-        loadSavedReports();
-      } else {
-        throw new Error("Failed to save to shared storage");
-      }
-    } else {
-      // Save locally only
-      const localReports = JSON.parse(
-        localStorage.getItem("savedReports") || "[]"
-      );
-      localReports.unshift(reportData);
-      if (localReports.length > 50) {
-        localReports.splice(50);
-      }
-      localStorage.setItem("savedReports", JSON.stringify(localReports));
+    localReports.unshift(reportData);
+    if (localReports.length > 50) {
+      localReports.splice(50);
     }
+    localStorage.setItem("savedReports", JSON.stringify(localReports));
+    console.log("Report saved locally");
   } catch (error) {
-    console.error("Error saving report to shared storage:", error);
-    // Fallback to local storage
+    console.error("Error saving report:", error);
+    // Still save locally even if there was an error
     const localReports = JSON.parse(
       localStorage.getItem("savedReports") || "[]"
     );
