@@ -1369,10 +1369,8 @@ async function saveData(showAlert = true) {
   }
 }
 
-// Function to save report as historical/view-only report
-function saveAsHistoricalReport(data) {
-  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
-
+// Function to save report as historical/view-only report (shared with all users)
+async function saveAsHistoricalReport(data) {
   const reportData = {
     id: Date.now().toString(),
     title: `Executive Summary - ${new Date().toLocaleDateString()}`,
@@ -1381,14 +1379,81 @@ function saveAsHistoricalReport(data) {
     summary: generateReportSummary(data),
   };
 
-  savedReports.unshift(reportData); // Add to beginning of array
+  try {
+    // First, get existing shared reports from Gist
+    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
+    let savedReports = [];
 
-  // Keep only the last 50 reports to prevent storage overflow
-  if (savedReports.length > 50) {
-    savedReports.splice(50);
+    if (response.ok) {
+      const gistData = await response.json();
+      const reportsContent = gistData.files["saved-reports.json"]?.content;
+      if (reportsContent) {
+        savedReports = JSON.parse(reportsContent);
+      }
+    }
+
+    // Add new report to the beginning
+    savedReports.unshift(reportData);
+
+    // Keep only the last 50 reports
+    if (savedReports.length > 50) {
+      savedReports.splice(50);
+    }
+
+    // Save back to Gist (this will create the file if it doesn't exist)
+    const token = prompt(
+      "Enter your GitHub token to save this report for all users (or cancel to save locally only):"
+    );
+
+    if (token) {
+      const updateResponse = await fetch(
+        `https://api.github.com/gists/${GIST_ID}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `token ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            files: {
+              "saved-reports.json": {
+                content: JSON.stringify(savedReports, null, 2),
+              },
+            },
+          }),
+        }
+      );
+
+      if (updateResponse.ok) {
+        console.log("Report saved to shared storage successfully");
+        // Also refresh the saved reports display
+        loadSavedReports();
+      } else {
+        throw new Error("Failed to save to shared storage");
+      }
+    } else {
+      // Save locally only
+      const localReports = JSON.parse(
+        localStorage.getItem("savedReports") || "[]"
+      );
+      localReports.unshift(reportData);
+      if (localReports.length > 50) {
+        localReports.splice(50);
+      }
+      localStorage.setItem("savedReports", JSON.stringify(localReports));
+    }
+  } catch (error) {
+    console.error("Error saving report to shared storage:", error);
+    // Fallback to local storage
+    const localReports = JSON.parse(
+      localStorage.getItem("savedReports") || "[]"
+    );
+    localReports.unshift(reportData);
+    if (localReports.length > 50) {
+      localReports.splice(50);
+    }
+    localStorage.setItem("savedReports", JSON.stringify(localReports));
   }
-
-  localStorage.setItem("savedReports", JSON.stringify(savedReports));
 }
 
 // Function to generate a summary of the report
@@ -2386,9 +2451,33 @@ function switchTab(tabName) {
   }
 }
 
-// Function to load and display saved reports
-function loadSavedReports() {
-  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+// Function to load and display saved reports (from shared Gist storage)
+async function loadSavedReports() {
+  let savedReports = [];
+
+  try {
+    // First, try to load shared reports from Gist
+    console.log("Loading shared saved reports from Gist...");
+    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
+
+    if (response.ok) {
+      const gistData = await response.json();
+      const reportsContent = gistData.files["saved-reports.json"]?.content;
+      if (reportsContent) {
+        savedReports = JSON.parse(reportsContent);
+        console.log("Loaded shared reports:", savedReports);
+      }
+    }
+  } catch (error) {
+    console.warn("Could not load shared reports, trying localStorage:", error);
+  }
+
+  // Fallback to localStorage if Gist failed or no shared reports
+  if (savedReports.length === 0) {
+    savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+    console.log("Loaded local reports:", savedReports);
+  }
+
   const reportsList = document.getElementById("saved-reports-list");
 
   if (savedReports.length === 0) {
@@ -2422,9 +2511,29 @@ function loadSavedReports() {
     .join("");
 }
 
-// Function to view a specific report
+// Function to view a specific report (from shared or local storage)
 async function viewReport(reportId) {
-  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+  let savedReports = [];
+
+  try {
+    // First, try to load from shared Gist storage
+    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
+    if (response.ok) {
+      const gistData = await response.json();
+      const reportsContent = gistData.files["saved-reports.json"]?.content;
+      if (reportsContent) {
+        savedReports = JSON.parse(reportsContent);
+      }
+    }
+  } catch (error) {
+    console.warn("Could not load shared reports for viewing:", error);
+  }
+
+  // Fallback to localStorage if not found in shared storage
+  if (savedReports.length === 0) {
+    savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+  }
+
   const report = savedReports.find((r) => r.id === reportId);
 
   if (!report) {
