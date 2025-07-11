@@ -1381,13 +1381,14 @@ async function saveAsHistoricalReport(data) {
 
   try {
     // First, get existing shared reports from Gist
+    console.log("Loading existing shared reports...");
     const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
     let savedReports = [];
 
     if (response.ok) {
       const gistData = await response.json();
       const reportsContent = gistData.files["saved-reports.json"]?.content;
-      if (reportsContent) {
+      if (reportsContent && reportsContent.trim() !== "[]") {
         savedReports = JSON.parse(reportsContent);
       }
     }
@@ -1400,19 +1401,48 @@ async function saveAsHistoricalReport(data) {
       savedReports.splice(50);
     }
 
-    // For now, just save locally (you can manually update the Gist when needed)
-    const localReports = JSON.parse(
-      localStorage.getItem("savedReports") || "[]"
-    );
-    localReports.unshift(reportData);
-    if (localReports.length > 50) {
-      localReports.splice(50);
+    // Try to save to shared Gist (using stored token)
+    console.log("Saving report to shared storage...");
+    const token =
+      localStorage.getItem("github_token") ||
+      prompt(
+        "Enter your GitHub token to save reports for all users (this will be remembered):"
+      );
+
+    if (token) {
+      localStorage.setItem("github_token", token);
+
+      const updateResponse = await fetch(
+        `https://api.github.com/gists/${GIST_ID}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `token ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            files: {
+              "saved-reports.json": {
+                content: JSON.stringify(savedReports, null, 2),
+              },
+            },
+          }),
+        }
+      );
+
+      if (updateResponse.ok) {
+        console.log("Report saved to shared storage successfully!");
+        // Refresh the saved reports display
+        loadSavedReports();
+      } else {
+        throw new Error("Failed to save to shared storage");
+      }
+    } else {
+      throw new Error("No token provided");
     }
-    localStorage.setItem("savedReports", JSON.stringify(localReports));
-    console.log("Report saved locally");
   } catch (error) {
-    console.error("Error saving report:", error);
-    // Still save locally even if there was an error
+    console.error("Error saving report to shared storage:", error);
+    // Fallback to local storage
     const localReports = JSON.parse(
       localStorage.getItem("savedReports") || "[]"
     );
@@ -1421,6 +1451,7 @@ async function saveAsHistoricalReport(data) {
       localReports.splice(50);
     }
     localStorage.setItem("savedReports", JSON.stringify(localReports));
+    console.log("Report saved locally as fallback");
   }
 }
 
@@ -2419,10 +2450,32 @@ function switchTab(tabName) {
   }
 }
 
-// Function to load and display saved reports (from localStorage)
-function loadSavedReports() {
-  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
-  console.log("Loading saved reports from localStorage:", savedReports);
+// Function to load and display saved reports (from shared Gist storage)
+async function loadSavedReports() {
+  let savedReports = [];
+
+  try {
+    // Try to load shared reports from Gist first
+    console.log("Loading shared saved reports from Gist...");
+    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
+
+    if (response.ok) {
+      const gistData = await response.json();
+      const reportsContent = gistData.files["saved-reports.json"]?.content;
+      if (reportsContent && reportsContent.trim() !== "[]") {
+        savedReports = JSON.parse(reportsContent);
+        console.log("Loaded shared reports:", savedReports.length, "reports");
+      }
+    }
+  } catch (error) {
+    console.warn("Could not load shared reports, trying localStorage:", error);
+  }
+
+  // Fallback to localStorage if no shared reports found
+  if (savedReports.length === 0) {
+    savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+    console.log("Loaded local reports:", savedReports.length, "reports");
+  }
 
   const reportsList = document.getElementById("saved-reports-list");
 
