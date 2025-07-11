@@ -1,73 +1,3 @@
-// GitHub Gist configuration for shared data storage
-const GIST_ID = "05c559c87f06f563814f5bc32e8fd80f";
-
-// For now, we'll save locally and load shared data (read-only sharing)
-// Users can manually update the gist if they want to share changes
-
-// Simple function to create tables directly from Gist data
-function createTablesFromGistData(data) {
-  console.log("Creating tables directly from Gist data:", data);
-
-  // Clear existing tables first
-  clearAllTablesOnly();
-
-  // Create tables for each section
-  if (
-    data.yield &&
-    data.yield.subsections &&
-    data.yield.subsections["wow-performance"]
-  ) {
-    const perfData = data.yield.subsections["wow-performance"];
-    if (perfData.tables && perfData.tables.length > 0) {
-      console.log("Creating performance table with data:", perfData.tables[0]);
-      addTable("wow-performance", "performance-trends");
-
-      // Get the newly created table and populate it
-      const container = document.getElementById("wow-performance-tables");
-      const tableWrapper = container?.querySelector(
-        ".table-wrapper:last-child"
-      );
-      if (tableWrapper) {
-        populateTableWithData(
-          tableWrapper,
-          perfData.tables[0],
-          "performance-trends"
-        );
-      }
-    }
-  }
-
-  if (
-    data.onboarding &&
-    data.onboarding.subsections &&
-    data.onboarding.subsections["newly-onboarded"]
-  ) {
-    const onboardingData = data.onboarding.subsections["newly-onboarded"];
-    if (onboardingData.tables && onboardingData.tables.length > 0) {
-      console.log(
-        "Creating onboarding table with data:",
-        onboardingData.tables[0]
-      );
-      addTable("newly-onboarded", "newly-onboarded-publishers");
-
-      // Get the newly created table and populate it
-      const container = document.getElementById("newly-onboarded-tables");
-      const tableWrapper = container?.querySelector(
-        ".table-wrapper:last-child"
-      );
-      if (tableWrapper) {
-        populateTableWithData(
-          tableWrapper,
-          onboardingData.tables[0],
-          "newly-onboarded-publishers"
-        );
-      }
-    }
-  }
-
-  console.log("Finished creating tables from Gist data");
-}
-
 // Table templates for different types of data
 const tableTemplates = {
   "performance-trends": {
@@ -1349,11 +1279,9 @@ function addCellEventListeners(cell) {
   });
 }
 
-// Function to save data locally (users can manually update the shared gist if needed)
+// Function to save data
 async function saveData(showAlert = true) {
   const data = extractAllData();
-
-  // Save to localStorage
   localStorage.setItem("executiveSummaryData", JSON.stringify(data));
 
   // Also save as a historical report only when manually saving
@@ -1369,8 +1297,10 @@ async function saveData(showAlert = true) {
   }
 }
 
-// Function to save report as historical/view-only report (shared with all users)
-async function saveAsHistoricalReport(data) {
+// Function to save report as historical/view-only report
+function saveAsHistoricalReport(data) {
+  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+
   const reportData = {
     id: Date.now().toString(),
     title: `Executive Summary - ${new Date().toLocaleDateString()}`,
@@ -1379,80 +1309,14 @@ async function saveAsHistoricalReport(data) {
     summary: generateReportSummary(data),
   };
 
-  try {
-    // First, get existing shared reports from Gist
-    console.log("Loading existing shared reports...");
-    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
-    let savedReports = [];
+  savedReports.unshift(reportData); // Add to beginning of array
 
-    if (response.ok) {
-      const gistData = await response.json();
-      const reportsContent = gistData.files["saved-reports.json"]?.content;
-      if (reportsContent && reportsContent.trim() !== "[]") {
-        savedReports = JSON.parse(reportsContent);
-      }
-    }
-
-    // Add new report to the beginning
-    savedReports.unshift(reportData);
-
-    // Keep only the last 50 reports
-    if (savedReports.length > 50) {
-      savedReports.splice(50);
-    }
-
-    // Try to save to shared Gist (using stored token)
-    console.log("Saving report to shared storage...");
-    const token =
-      localStorage.getItem("github_token") ||
-      prompt(
-        "Enter your GitHub token to save reports for all users (this will be remembered):"
-      );
-
-    if (token) {
-      localStorage.setItem("github_token", token);
-
-      const updateResponse = await fetch(
-        `https://api.github.com/gists/${GIST_ID}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `token ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            files: {
-              "saved-reports.json": {
-                content: JSON.stringify(savedReports, null, 2),
-              },
-            },
-          }),
-        }
-      );
-
-      if (updateResponse.ok) {
-        console.log("Report saved to shared storage successfully!");
-        // Refresh the saved reports display
-        loadSavedReports();
-      } else {
-        throw new Error("Failed to save to shared storage");
-      }
-    } else {
-      throw new Error("No token provided");
-    }
-  } catch (error) {
-    console.error("Error saving report to shared storage:", error);
-    // Fallback to local storage
-    const localReports = JSON.parse(
-      localStorage.getItem("savedReports") || "[]"
-    );
-    localReports.unshift(reportData);
-    if (localReports.length > 50) {
-      localReports.splice(50);
-    }
-    localStorage.setItem("savedReports", JSON.stringify(localReports));
-    console.log("Report saved locally as fallback");
+  // Keep only the last 50 reports to prevent storage overflow
+  if (savedReports.length > 50) {
+    savedReports.splice(50);
   }
+
+  localStorage.setItem("savedReports", JSON.stringify(savedReports));
 }
 
 // Function to generate a summary of the report
@@ -1644,106 +1508,49 @@ function extractAllData() {
   return data;
 }
 
-// Function to load data from GitHub Gist (shared) with localStorage fallback
-async function loadData() {
-  let data = null;
+// Function to load data and restore it to the interface
+function loadData() {
+  const savedData = localStorage.getItem("executiveSummaryData");
+  if (savedData) {
+    try {
+      const data = JSON.parse(savedData);
+      console.log("Loading saved data:", data);
 
-  try {
-    // First, try to load from GitHub Gist (shared data)
-    console.log("Attempting to load shared data from GitHub Gist...");
-    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
+      // Clear existing tables first to prevent duplicates
+      clearAllTablesOnly();
+      console.log("Cleared tables before loading saved data");
 
-    console.log("Gist response status:", response.status);
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        let totalTablesRestored = 0;
 
-    if (response.ok) {
-      const gistData = await response.json();
-      console.log("Gist data received:", gistData);
-      const fileContent =
-        gistData.files["executive-summary-data.json"]?.content;
+        // Restore data to each section
+        Object.keys(data).forEach((sectionId) => {
+          const section = data[sectionId];
+          if (section.subsections) {
+            Object.keys(section.subsections).forEach((subsectionId) => {
+              const subsection = section.subsections[subsectionId];
+              if (subsection.tables && subsection.tables.length > 0) {
+                console.log(
+                  `Restoring ${subsection.tables.length} table(s) for ${subsectionId}`
+                );
+                // Restore tables for this subsection
+                restoreTablesForSubsection(subsectionId, subsection.tables);
+                totalTablesRestored += subsection.tables.length;
+              }
+            });
+          }
+        });
 
-      console.log("File content:", fileContent);
-
-      if (fileContent) {
-        data = JSON.parse(fileContent);
-        console.log("Successfully loaded shared data from GitHub Gist:", data);
-
-        // Immediately create tables with the loaded data
-        createTablesFromGistData(data);
-        return; // Exit early since we've created the tables
-      } else {
-        console.log("No file content found in gist");
-      }
-    } else {
-      console.log(
-        "Gist response not ok:",
-        response.status,
-        response.statusText
-      );
+        console.log(
+          `Data loaded successfully - restored ${totalTablesRestored} tables total`
+        );
+      }, 50);
+    } catch (error) {
+      console.error("Error loading saved data:", error);
+      // If loading fails, clear tables to prevent duplicates
+      clearAllTablesOnly();
     }
-  } catch (error) {
-    console.warn(
-      "Could not load from GitHub Gist, trying localStorage:",
-      error
-    );
-  }
-
-  // Fallback to localStorage if GitHub Gist failed
-  if (!data) {
-    const savedData = localStorage.getItem("executiveSummaryData");
-    if (savedData) {
-      try {
-        data = JSON.parse(savedData);
-        console.log("Loading data from localStorage:", data);
-      } catch (error) {
-        console.error("Error parsing localStorage data:", error);
-        return;
-      }
-    }
-  }
-
-  // If we have data from either source, restore it
-  if (data) {
-    // Clear existing tables first to prevent duplicates
-    clearAllTablesOnly();
-    console.log("Cleared tables before loading saved data");
-
-    // Small delay to ensure DOM is ready
-    setTimeout(() => {
-      let totalTablesRestored = 0;
-
-      console.log("Starting table restoration process...");
-      console.log("Data keys:", Object.keys(data));
-
-      // Restore data to each section
-      Object.keys(data).forEach((sectionId) => {
-        console.log(`Processing section: ${sectionId}`);
-        const section = data[sectionId];
-        if (section.subsections) {
-          Object.keys(section.subsections).forEach((subsectionId) => {
-            console.log(`Processing subsection: ${subsectionId}`);
-            const subsection = section.subsections[subsectionId];
-            console.log(`Subsection data:`, subsection);
-            if (subsection.tables && subsection.tables.length > 0) {
-              console.log(
-                `Restoring ${subsection.tables.length} table(s) for ${subsectionId}`
-              );
-              console.log(`Table data:`, subsection.tables);
-              // Restore tables for this subsection
-              restoreTablesForSubsection(subsectionId, subsection.tables);
-              totalTablesRestored += subsection.tables.length;
-            } else {
-              console.log(`No tables found for ${subsectionId}`);
-            }
-          });
-        } else {
-          console.log(`No subsections found for ${sectionId}`);
-        }
-      });
-
-      console.log(
-        `Data loaded successfully - restored ${totalTablesRestored} tables total`
-      );
-    }, 50);
   }
 }
 
@@ -1758,8 +1565,6 @@ function clearAllTablesOnly() {
 
 // Function to restore tables for a specific subsection
 function restoreTablesForSubsection(subsectionId, tables) {
-  console.log(`restoreTablesForSubsection called with:`, subsectionId, tables);
-
   // Map subsection IDs to their table types
   const subsectionToTableType = {
     "wow-performance": "performance-trends",
@@ -1773,8 +1578,6 @@ function restoreTablesForSubsection(subsectionId, tables) {
   };
 
   const tableType = subsectionToTableType[subsectionId];
-  console.log(`Table type for ${subsectionId}:`, tableType);
-
   if (!tableType) {
     console.warn(`Unknown subsection ID: ${subsectionId}`);
     return;
@@ -1782,27 +1585,17 @@ function restoreTablesForSubsection(subsectionId, tables) {
 
   // Create and populate each table
   tables.forEach((tableData, index) => {
-    console.log(`Creating table ${index} for ${subsectionId}:`, tableData);
-
     // Add a new table
     addTable(subsectionId, tableType);
 
     // Get the newly created table (it will be the last one)
     const container = document.getElementById(`${subsectionId}-tables`);
-    console.log(`Container found:`, container);
-
-    const tableWrappers = container?.querySelectorAll(".table-wrapper");
-    console.log(`Table wrappers found:`, tableWrappers?.length);
-
-    const newTableWrapper = tableWrappers?.[tableWrappers.length - 1];
-    console.log(`New table wrapper:`, newTableWrapper);
+    const tableWrappers = container.querySelectorAll(".table-wrapper");
+    const newTableWrapper = tableWrappers[tableWrappers.length - 1];
 
     if (newTableWrapper) {
       // Populate the table with saved data
-      console.log(`Populating table with data:`, tableData);
       populateTableWithData(newTableWrapper, tableData, tableType);
-    } else {
-      console.error(`Could not find table wrapper for ${subsectionId}`);
     }
   });
 }
@@ -2328,15 +2121,19 @@ document.addEventListener("DOMContentLoaded", function () {
   clearAllTablesOnly();
   console.log("Cleared existing tables");
 
-  // Always try to load shared data first, then fallback to localStorage or defaults
-  console.log("Attempting to load data...");
-  setTimeout(async () => {
-    await loadData();
+  // Check if we have saved data first
+  const savedData = localStorage.getItem("executiveSummaryData");
 
-    // If no data was loaded (neither from Gist nor localStorage), add default tables
-    const hasAnyTables = document.querySelectorAll(".table-wrapper").length > 0;
-    if (!hasAnyTables) {
-      console.log("No data found, adding default tables...");
+  if (savedData) {
+    console.log("Found saved data, loading...");
+    // Load saved data if available
+    setTimeout(() => {
+      loadData();
+    }, 100);
+  } else {
+    console.log("No saved data found, adding default tables...");
+    // Add initial tables for demonstration only if no saved data exists
+    setTimeout(() => {
       addTable("wow-performance", "performance-trends");
       addTable("ab-test", "ab-test-updates");
       addTable("newly-onboarded", "newly-onboarded-publishers");
@@ -2346,8 +2143,8 @@ document.addEventListener("DOMContentLoaded", function () {
       addTable("gave-notice", "notice-data");
       addTable("publisher-issues", "publisher-updates");
       console.log("Default tables added");
-    }
-  }, 100);
+    }, 100);
+  }
 
   // Auto-save when page becomes hidden (user switches tabs or minimizes)
   document.addEventListener("visibilitychange", function () {
@@ -2450,33 +2247,9 @@ function switchTab(tabName) {
   }
 }
 
-// Function to load and display saved reports (from shared Gist storage)
-async function loadSavedReports() {
-  let savedReports = [];
-
-  try {
-    // Try to load shared reports from Gist first
-    console.log("Loading shared saved reports from Gist...");
-    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
-
-    if (response.ok) {
-      const gistData = await response.json();
-      const reportsContent = gistData.files["saved-reports.json"]?.content;
-      if (reportsContent && reportsContent.trim() !== "[]") {
-        savedReports = JSON.parse(reportsContent);
-        console.log("Loaded shared reports:", savedReports.length, "reports");
-      }
-    }
-  } catch (error) {
-    console.warn("Could not load shared reports, trying localStorage:", error);
-  }
-
-  // Fallback to localStorage if no shared reports found
-  if (savedReports.length === 0) {
-    savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
-    console.log("Loaded local reports:", savedReports.length, "reports");
-  }
-
+// Function to load and display saved reports
+function loadSavedReports() {
+  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
   const reportsList = document.getElementById("saved-reports-list");
 
   if (savedReports.length === 0) {
@@ -2510,7 +2283,7 @@ async function loadSavedReports() {
     .join("");
 }
 
-// Function to view a specific report (from localStorage)
+// Function to view a specific report
 async function viewReport(reportId) {
   const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
   const report = savedReports.find((r) => r.id === reportId);
