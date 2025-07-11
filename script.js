@@ -1579,6 +1579,9 @@ async function loadData() {
     setTimeout(() => {
       let totalTablesRestored = 0;
 
+      console.log("Starting table restoration process...");
+      console.log("Data keys:", Object.keys(data));
+
       // Restore data to each section
       Object.keys(data).forEach((sectionId) => {
         console.log(`Processing section: ${sectionId}`);
