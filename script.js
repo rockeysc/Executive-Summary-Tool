@@ -1,3 +1,18 @@
+// GitHub Gist configuration for shared data storage
+const GIST_ID = "05c559c87f06f563814f5bc32e8fd80f";
+
+// For security, we'll prompt for the token when needed
+let githubToken = null;
+
+function getGitHubToken() {
+  if (!githubToken) {
+    githubToken = prompt(
+      "Enter your GitHub Personal Access Token to save shared data (or cancel to save locally only):"
+    );
+  }
+  return githubToken;
+}
+
 // Table templates for different types of data
 const tableTemplates = {
   "performance-trends": {
@@ -1279,21 +1294,86 @@ function addCellEventListeners(cell) {
   });
 }
 
-// Function to save data
+// Function to save data to GitHub Gist (shared) and localStorage (backup)
 async function saveData(showAlert = true) {
   const data = extractAllData();
-  localStorage.setItem("executiveSummaryData", JSON.stringify(data));
 
-  // Also save as a historical report only when manually saving
-  if (showAlert) {
-    saveAsHistoricalReport(data);
-  }
+  const token = getGitHubToken();
 
-  console.log("Data saved to localStorage:", data);
-  console.log("localStorage size:", JSON.stringify(data).length, "characters");
+  if (token) {
+    try {
+      // Save to GitHub Gist for sharing between users
+      const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `token ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          files: {
+            "executive-summary-data.json": {
+              content: JSON.stringify(data, null, 2),
+            },
+          },
+        }),
+      });
 
-  if (showAlert) {
-    await showCustomAlert("Report saved successfully!", "Success", "success");
+      if (!response.ok) {
+        throw new Error(`GitHub API error: ${response.status}`);
+      }
+
+      // Also save locally as backup
+      localStorage.setItem("executiveSummaryData", JSON.stringify(data));
+
+      // Also save as a historical report only when manually saving
+      if (showAlert) {
+        saveAsHistoricalReport(data);
+      }
+
+      console.log("Data saved to GitHub Gist and localStorage:", data);
+
+      if (showAlert) {
+        await showCustomAlert(
+          "Report saved and shared with all users!",
+          "Success",
+          "success"
+        );
+      }
+    } catch (error) {
+      console.error("Error saving to GitHub Gist:", error);
+      // Fallback to localStorage only
+      localStorage.setItem("executiveSummaryData", JSON.stringify(data));
+
+      if (showAlert) {
+        saveAsHistoricalReport(data);
+      }
+
+      console.log(
+        "Data saved to localStorage (sharing temporarily unavailable):",
+        data
+      );
+
+      if (showAlert) {
+        await showCustomAlert(
+          "Report saved locally (sharing temporarily unavailable)",
+          "Warning",
+          "warning"
+        );
+      }
+    }
+  } else {
+    // User cancelled token prompt, save locally only
+    localStorage.setItem("executiveSummaryData", JSON.stringify(data));
+
+    if (showAlert) {
+      saveAsHistoricalReport(data);
+    }
+
+    console.log("Data saved to localStorage only:", data);
+
+    if (showAlert) {
+      await showCustomAlert("Report saved locally only", "Success", "success");
+    }
   }
 }
 
@@ -1508,49 +1588,78 @@ function extractAllData() {
   return data;
 }
 
-// Function to load data and restore it to the interface
-function loadData() {
-  const savedData = localStorage.getItem("executiveSummaryData");
-  if (savedData) {
-    try {
-      const data = JSON.parse(savedData);
-      console.log("Loading saved data:", data);
+// Function to load data from GitHub Gist (shared) with localStorage fallback
+async function loadData() {
+  let data = null;
 
-      // Clear existing tables first to prevent duplicates
-      clearAllTablesOnly();
-      console.log("Cleared tables before loading saved data");
+  try {
+    // First, try to load from GitHub Gist (shared data)
+    console.log("Attempting to load shared data from GitHub Gist...");
+    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
 
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
-        let totalTablesRestored = 0;
+    if (response.ok) {
+      const gistData = await response.json();
+      const fileContent =
+        gistData.files["executive-summary-data.json"]?.content;
 
-        // Restore data to each section
-        Object.keys(data).forEach((sectionId) => {
-          const section = data[sectionId];
-          if (section.subsections) {
-            Object.keys(section.subsections).forEach((subsectionId) => {
-              const subsection = section.subsections[subsectionId];
-              if (subsection.tables && subsection.tables.length > 0) {
-                console.log(
-                  `Restoring ${subsection.tables.length} table(s) for ${subsectionId}`
-                );
-                // Restore tables for this subsection
-                restoreTablesForSubsection(subsectionId, subsection.tables);
-                totalTablesRestored += subsection.tables.length;
-              }
-            });
-          }
-        });
-
-        console.log(
-          `Data loaded successfully - restored ${totalTablesRestored} tables total`
-        );
-      }, 50);
-    } catch (error) {
-      console.error("Error loading saved data:", error);
-      // If loading fails, clear tables to prevent duplicates
-      clearAllTablesOnly();
+      if (fileContent) {
+        data = JSON.parse(fileContent);
+        console.log("Successfully loaded shared data from GitHub Gist:", data);
+      }
     }
+  } catch (error) {
+    console.warn(
+      "Could not load from GitHub Gist, trying localStorage:",
+      error
+    );
+  }
+
+  // Fallback to localStorage if GitHub Gist failed
+  if (!data) {
+    const savedData = localStorage.getItem("executiveSummaryData");
+    if (savedData) {
+      try {
+        data = JSON.parse(savedData);
+        console.log("Loading data from localStorage:", data);
+      } catch (error) {
+        console.error("Error parsing localStorage data:", error);
+        return;
+      }
+    }
+  }
+
+  // If we have data from either source, restore it
+  if (data) {
+    // Clear existing tables first to prevent duplicates
+    clearAllTablesOnly();
+    console.log("Cleared tables before loading saved data");
+
+    // Small delay to ensure DOM is ready
+    setTimeout(() => {
+      let totalTablesRestored = 0;
+
+      // Restore data to each section
+      Object.keys(data).forEach((sectionId) => {
+        const section = data[sectionId];
+        if (section.subsections) {
+          Object.keys(section.subsections).forEach((subsectionId) => {
+            const subsection = section.subsections[subsectionId];
+            if (subsection.tables && subsection.tables.length > 0) {
+              console.log(
+                `Restoring ${subsection.tables.length} table(s) for ${subsectionId}`
+              );
+              // Restore tables for this subsection
+              restoreTablesForSubsection(subsectionId, subsection.tables);
+              totalTablesRestored += subsection.tables.length;
+            }
+          });
+        }
+      });
+
+      console.log(
+        `Data loaded successfully - restored ${totalTablesRestored} tables total`
+      );
+    }, 50);
   }
 }
 
@@ -2121,19 +2230,15 @@ document.addEventListener("DOMContentLoaded", function () {
   clearAllTablesOnly();
   console.log("Cleared existing tables");
 
-  // Check if we have saved data first
-  const savedData = localStorage.getItem("executiveSummaryData");
+  // Always try to load shared data first, then fallback to localStorage or defaults
+  console.log("Attempting to load data...");
+  setTimeout(async () => {
+    await loadData();
 
-  if (savedData) {
-    console.log("Found saved data, loading...");
-    // Load saved data if available
-    setTimeout(() => {
-      loadData();
-    }, 100);
-  } else {
-    console.log("No saved data found, adding default tables...");
-    // Add initial tables for demonstration only if no saved data exists
-    setTimeout(() => {
+    // If no data was loaded (neither from Gist nor localStorage), add default tables
+    const hasAnyTables = document.querySelectorAll(".table-wrapper").length > 0;
+    if (!hasAnyTables) {
+      console.log("No data found, adding default tables...");
       addTable("wow-performance", "performance-trends");
       addTable("ab-test", "ab-test-updates");
       addTable("newly-onboarded", "newly-onboarded-publishers");
@@ -2143,8 +2248,8 @@ document.addEventListener("DOMContentLoaded", function () {
       addTable("gave-notice", "notice-data");
       addTable("publisher-issues", "publisher-updates");
       console.log("Default tables added");
-    }, 100);
-  }
+    }
+  }, 100);
 
   // Auto-save when page becomes hidden (user switches tabs or minimizes)
   document.addEventListener("visibilitychange", function () {
