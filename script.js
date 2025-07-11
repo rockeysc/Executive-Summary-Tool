@@ -1,17 +1,8 @@
 // GitHub Gist configuration for shared data storage
 const GIST_ID = "05c559c87f06f563814f5bc32e8fd80f";
 
-// For security, we'll prompt for the token when needed
-let githubToken = null;
-
-function getGitHubToken() {
-  if (!githubToken) {
-    githubToken = prompt(
-      "Enter your GitHub Personal Access Token to save shared data (or cancel to save locally only):"
-    );
-  }
-  return githubToken;
-}
+// For now, we'll save locally and load shared data (read-only sharing)
+// Users can manually update the gist if they want to share changes
 
 // Table templates for different types of data
 const tableTemplates = {
@@ -1294,86 +1285,23 @@ function addCellEventListeners(cell) {
   });
 }
 
-// Function to save data to GitHub Gist (shared) and localStorage (backup)
+// Function to save data locally (users can manually update the shared gist if needed)
 async function saveData(showAlert = true) {
   const data = extractAllData();
 
-  const token = getGitHubToken();
+  // Save to localStorage
+  localStorage.setItem("executiveSummaryData", JSON.stringify(data));
 
-  if (token) {
-    try {
-      // Save to GitHub Gist for sharing between users
-      const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `token ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          files: {
-            "executive-summary-data.json": {
-              content: JSON.stringify(data, null, 2),
-            },
-          },
-        }),
-      });
+  // Also save as a historical report only when manually saving
+  if (showAlert) {
+    saveAsHistoricalReport(data);
+  }
 
-      if (!response.ok) {
-        throw new Error(`GitHub API error: ${response.status}`);
-      }
+  console.log("Data saved to localStorage:", data);
+  console.log("localStorage size:", JSON.stringify(data).length, "characters");
 
-      // Also save locally as backup
-      localStorage.setItem("executiveSummaryData", JSON.stringify(data));
-
-      // Also save as a historical report only when manually saving
-      if (showAlert) {
-        saveAsHistoricalReport(data);
-      }
-
-      console.log("Data saved to GitHub Gist and localStorage:", data);
-
-      if (showAlert) {
-        await showCustomAlert(
-          "Report saved and shared with all users!",
-          "Success",
-          "success"
-        );
-      }
-    } catch (error) {
-      console.error("Error saving to GitHub Gist:", error);
-      // Fallback to localStorage only
-      localStorage.setItem("executiveSummaryData", JSON.stringify(data));
-
-      if (showAlert) {
-        saveAsHistoricalReport(data);
-      }
-
-      console.log(
-        "Data saved to localStorage (sharing temporarily unavailable):",
-        data
-      );
-
-      if (showAlert) {
-        await showCustomAlert(
-          "Report saved locally (sharing temporarily unavailable)",
-          "Warning",
-          "warning"
-        );
-      }
-    }
-  } else {
-    // User cancelled token prompt, save locally only
-    localStorage.setItem("executiveSummaryData", JSON.stringify(data));
-
-    if (showAlert) {
-      saveAsHistoricalReport(data);
-    }
-
-    console.log("Data saved to localStorage only:", data);
-
-    if (showAlert) {
-      await showCustomAlert("Report saved locally only", "Success", "success");
-    }
+  if (showAlert) {
+    await showCustomAlert("Report saved successfully!", "Success", "success");
   }
 }
 
