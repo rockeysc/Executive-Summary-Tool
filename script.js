@@ -1525,15 +1525,28 @@ async function loadData() {
     console.log("Attempting to load shared data from GitHub Gist...");
     const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
 
+    console.log("Gist response status:", response.status);
+
     if (response.ok) {
       const gistData = await response.json();
+      console.log("Gist data received:", gistData);
       const fileContent =
         gistData.files["executive-summary-data.json"]?.content;
+
+      console.log("File content:", fileContent);
 
       if (fileContent) {
         data = JSON.parse(fileContent);
         console.log("Successfully loaded shared data from GitHub Gist:", data);
+      } else {
+        console.log("No file content found in gist");
       }
+    } else {
+      console.log(
+        "Gist response not ok:",
+        response.status,
+        response.statusText
+      );
     }
   } catch (error) {
     console.warn(
