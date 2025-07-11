@@ -2419,32 +2419,10 @@ function switchTab(tabName) {
   }
 }
 
-// Function to load and display saved reports (from shared Gist storage)
-async function loadSavedReports() {
-  let savedReports = [];
-
-  try {
-    // First, try to load shared reports from Gist
-    console.log("Loading shared saved reports from Gist...");
-    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
-
-    if (response.ok) {
-      const gistData = await response.json();
-      const reportsContent = gistData.files["saved-reports.json"]?.content;
-      if (reportsContent) {
-        savedReports = JSON.parse(reportsContent);
-        console.log("Loaded shared reports:", savedReports);
-      }
-    }
-  } catch (error) {
-    console.warn("Could not load shared reports, trying localStorage:", error);
-  }
-
-  // Fallback to localStorage if Gist failed or no shared reports
-  if (savedReports.length === 0) {
-    savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
-    console.log("Loaded local reports:", savedReports);
-  }
+// Function to load and display saved reports (from localStorage)
+function loadSavedReports() {
+  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+  console.log("Loading saved reports from localStorage:", savedReports);
 
   const reportsList = document.getElementById("saved-reports-list");
 
@@ -2479,29 +2457,9 @@ async function loadSavedReports() {
     .join("");
 }
 
-// Function to view a specific report (from shared or local storage)
+// Function to view a specific report (from localStorage)
 async function viewReport(reportId) {
-  let savedReports = [];
-
-  try {
-    // First, try to load from shared Gist storage
-    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`);
-    if (response.ok) {
-      const gistData = await response.json();
-      const reportsContent = gistData.files["saved-reports.json"]?.content;
-      if (reportsContent) {
-        savedReports = JSON.parse(reportsContent);
-      }
-    }
-  } catch (error) {
-    console.warn("Could not load shared reports for viewing:", error);
-  }
-
-  // Fallback to localStorage if not found in shared storage
-  if (savedReports.length === 0) {
-    savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
-  }
-
+  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
   const report = savedReports.find((r) => r.id === reportId);
 
   if (!report) {
