@@ -4,6 +4,70 @@ const GIST_ID = "05c559c87f06f563814f5bc32e8fd80f";
 // For now, we'll save locally and load shared data (read-only sharing)
 // Users can manually update the gist if they want to share changes
 
+// Simple function to create tables directly from Gist data
+function createTablesFromGistData(data) {
+  console.log("Creating tables directly from Gist data:", data);
+
+  // Clear existing tables first
+  clearAllTablesOnly();
+
+  // Create tables for each section
+  if (
+    data.yield &&
+    data.yield.subsections &&
+    data.yield.subsections["wow-performance"]
+  ) {
+    const perfData = data.yield.subsections["wow-performance"];
+    if (perfData.tables && perfData.tables.length > 0) {
+      console.log("Creating performance table with data:", perfData.tables[0]);
+      addTable("wow-performance", "performance-trends");
+
+      // Get the newly created table and populate it
+      const container = document.getElementById("wow-performance-tables");
+      const tableWrapper = container?.querySelector(
+        ".table-wrapper:last-child"
+      );
+      if (tableWrapper) {
+        populateTableWithData(
+          tableWrapper,
+          perfData.tables[0],
+          "performance-trends"
+        );
+      }
+    }
+  }
+
+  if (
+    data.onboarding &&
+    data.onboarding.subsections &&
+    data.onboarding.subsections["newly-onboarded"]
+  ) {
+    const onboardingData = data.onboarding.subsections["newly-onboarded"];
+    if (onboardingData.tables && onboardingData.tables.length > 0) {
+      console.log(
+        "Creating onboarding table with data:",
+        onboardingData.tables[0]
+      );
+      addTable("newly-onboarded", "newly-onboarded-publishers");
+
+      // Get the newly created table and populate it
+      const container = document.getElementById("newly-onboarded-tables");
+      const tableWrapper = container?.querySelector(
+        ".table-wrapper:last-child"
+      );
+      if (tableWrapper) {
+        populateTableWithData(
+          tableWrapper,
+          onboardingData.tables[0],
+          "newly-onboarded-publishers"
+        );
+      }
+    }
+  }
+
+  console.log("Finished creating tables from Gist data");
+}
+
 // Table templates for different types of data
 const tableTemplates = {
   "performance-trends": {
@@ -1538,6 +1602,10 @@ async function loadData() {
       if (fileContent) {
         data = JSON.parse(fileContent);
         console.log("Successfully loaded shared data from GitHub Gist:", data);
+
+        // Immediately create tables with the loaded data
+        createTablesFromGistData(data);
+        return; // Exit early since we've created the tables
       } else {
         console.log("No file content found in gist");
       }
