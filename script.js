@@ -1581,19 +1581,27 @@ async function loadData() {
 
       // Restore data to each section
       Object.keys(data).forEach((sectionId) => {
+        console.log(`Processing section: ${sectionId}`);
         const section = data[sectionId];
         if (section.subsections) {
           Object.keys(section.subsections).forEach((subsectionId) => {
+            console.log(`Processing subsection: ${subsectionId}`);
             const subsection = section.subsections[subsectionId];
+            console.log(`Subsection data:`, subsection);
             if (subsection.tables && subsection.tables.length > 0) {
               console.log(
                 `Restoring ${subsection.tables.length} table(s) for ${subsectionId}`
               );
+              console.log(`Table data:`, subsection.tables);
               // Restore tables for this subsection
               restoreTablesForSubsection(subsectionId, subsection.tables);
               totalTablesRestored += subsection.tables.length;
+            } else {
+              console.log(`No tables found for ${subsectionId}`);
             }
           });
+        } else {
+          console.log(`No subsections found for ${sectionId}`);
         }
       });
 
@@ -1615,6 +1623,8 @@ function clearAllTablesOnly() {
 
 // Function to restore tables for a specific subsection
 function restoreTablesForSubsection(subsectionId, tables) {
+  console.log(`restoreTablesForSubsection called with:`, subsectionId, tables);
+
   // Map subsection IDs to their table types
   const subsectionToTableType = {
     "wow-performance": "performance-trends",
@@ -1628,6 +1638,8 @@ function restoreTablesForSubsection(subsectionId, tables) {
   };
 
   const tableType = subsectionToTableType[subsectionId];
+  console.log(`Table type for ${subsectionId}:`, tableType);
+
   if (!tableType) {
     console.warn(`Unknown subsection ID: ${subsectionId}`);
     return;
@@ -1635,17 +1647,27 @@ function restoreTablesForSubsection(subsectionId, tables) {
 
   // Create and populate each table
   tables.forEach((tableData, index) => {
+    console.log(`Creating table ${index} for ${subsectionId}:`, tableData);
+
     // Add a new table
     addTable(subsectionId, tableType);
 
     // Get the newly created table (it will be the last one)
     const container = document.getElementById(`${subsectionId}-tables`);
-    const tableWrappers = container.querySelectorAll(".table-wrapper");
-    const newTableWrapper = tableWrappers[tableWrappers.length - 1];
+    console.log(`Container found:`, container);
+
+    const tableWrappers = container?.querySelectorAll(".table-wrapper");
+    console.log(`Table wrappers found:`, tableWrappers?.length);
+
+    const newTableWrapper = tableWrappers?.[tableWrappers.length - 1];
+    console.log(`New table wrapper:`, newTableWrapper);
 
     if (newTableWrapper) {
       // Populate the table with saved data
+      console.log(`Populating table with data:`, tableData);
       populateTableWithData(newTableWrapper, tableData, tableType);
+    } else {
+      console.error(`Could not find table wrapper for ${subsectionId}`);
     }
   });
 }
