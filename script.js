@@ -419,30 +419,31 @@ function addTable(subsectionId, tableType) {
         }
       })
       .join("");
-  } else if (
-    tableType === "in-progress-publishers" &&
-    template.specialFormatting &&
-    template.specialFormatting.customLayout
-  ) {
+  } else if (tableType === "in-progress-publishers") {
     // Generate div-based structure for in-progress publishers
     rowsHTML = template.defaultRows
       .map((row, index) => {
-        if (index === template.specialFormatting.statusRow) {
+        if (index === 3) {
+          // STATUS row (index 3)
           // STATUS row spans multiple columns
           return `<div class="in-progress-row status-row">
-            <div class="progress-label">${row[0]}</div>
-            <div contenteditable="true" class="progress-status-cell">${row[1]}</div>
+            <div class="progress-label">${row[0] || ""}</div>
+            <div contenteditable="true" class="progress-status-cell">${
+              row[1] || ""
+            }</div>
           </div>`;
         } else {
           // Regular rows with 4 columns
           return `<div class="in-progress-row regular-row">
-            <div class="progress-label">${row[0]}</div>
-            <div contenteditable="true" class="progress-data">${row[1]}</div>
-            <div class="progress-label">${row[2]}</div>
+            <div class="progress-label">${row[0] || ""}</div>
+            <div contenteditable="true" class="progress-data">${
+              row[1] || ""
+            }</div>
+            <div class="progress-label">${row[2] || ""}</div>
             <div class="progress-data-input">${
               isDateField(row[2], 3, index, tableType)
-                ? createDateInput(row[3])
-                : `<span contenteditable="true">${row[3]}</span>`
+                ? createDateInput(row[3] || "")
+                : `<span contenteditable="true">${row[3] || ""}</span>`
             }</div>
           </div>`;
         }
@@ -1464,6 +1465,13 @@ function extractAllData() {
 
   sections.forEach((section) => {
     const sectionId = section.id;
+
+    // Skip view-only sections (those with IDs starting with "view-")
+    if (sectionId.startsWith("view-")) {
+      console.log(`Skipping view-only section: ${sectionId}`);
+      return;
+    }
+
     const sectionTitle =
       section.querySelector(".section-header h2").textContent;
     data[sectionId] = {
@@ -1474,6 +1482,13 @@ function extractAllData() {
     const subsections = section.querySelectorAll(".subsection");
     subsections.forEach((subsection) => {
       const subsectionId = subsection.id;
+
+      // Skip view-only subsections (those with IDs starting with "view-")
+      if (subsectionId.startsWith("view-")) {
+        console.log(`Skipping view-only subsection: ${subsectionId}`);
+        return;
+      }
+
       const subsectionTitle = subsection.querySelector(
         ".subsection-header h3"
       ).textContent;
@@ -3387,6 +3402,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
   console.log("Initializing application...");
 
+  // Clean up any corrupted localStorage data first
+  cleanupSavedReports();
+
+  // For now, let's completely clear localStorage to start fresh (commented out for testing)
+  // console.log("Clearing all localStorage data to start fresh...");
+  // localStorage.removeItem("executiveSummaryData");
+  // localStorage.removeItem("savedReports");
+
   // Add event listeners to buttons
   document
     .getElementById("save-btn")
@@ -3422,11 +3445,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
         let totalTablesRestored = 0;
 
-        // Restore data to each section
+        // Restore data to each section (skip view-only sections)
         Object.keys(data).forEach((sectionId) => {
+          // Skip view-only sections
+          if (sectionId.startsWith("view-")) {
+            console.log(
+              `Skipping view-only section during restore: ${sectionId}`
+            );
+            return;
+          }
+
           const section = data[sectionId];
           if (section.subsections) {
             Object.keys(section.subsections).forEach((subsectionId) => {
+              // Skip view-only subsections
+              if (subsectionId.startsWith("view-")) {
+                console.log(
+                  `Skipping view-only subsection during restore: ${subsectionId}`
+                );
+                return;
+              }
+
               const subsection = section.subsections[subsectionId];
               if (subsection.tables && subsection.tables.length > 0) {
                 console.log(
@@ -4348,6 +4387,28 @@ function saveReportWithTitle() {
     const title = prompt("Enter a title for this report:");
     if (title && title.trim()) {
       const data = extractAllData();
+
+      // Clean up any view-only sections that might have been saved previously
+      const cleanedData = {};
+      Object.keys(data).forEach((sectionId) => {
+        if (!sectionId.startsWith("view-")) {
+          cleanedData[sectionId] = {
+            ...data[sectionId],
+            subsections: {},
+          };
+
+          // Also clean subsections
+          if (data[sectionId].subsections) {
+            Object.keys(data[sectionId].subsections).forEach((subsectionId) => {
+              if (!subsectionId.startsWith("view-")) {
+                cleanedData[sectionId].subsections[subsectionId] =
+                  data[sectionId].subsections[subsectionId];
+              }
+            });
+          }
+        }
+      });
+
       const savedReports = JSON.parse(
         localStorage.getItem("savedReports") || "[]"
       );
@@ -4355,7 +4416,7 @@ function saveReportWithTitle() {
       const newReport = {
         id: Date.now().toString(),
         title: title.trim(),
-        data: data,
+        data: cleanedData,
         savedDate: new Date().toISOString(),
         formattedDate:
           new Date().toLocaleDateString() +
@@ -4381,7 +4442,61 @@ function saveReportWithTitle() {
   });
 }
 
+// Function to clean up corrupted saved reports
+function cleanupSavedReports() {
+  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+  let cleaned = false;
+
+  const cleanedReports = savedReports.map((report) => {
+    const cleanedData = {};
+    let reportCleaned = false;
+
+    Object.keys(report.data).forEach((sectionId) => {
+      if (!sectionId.startsWith("view-")) {
+        cleanedData[sectionId] = {
+          ...report.data[sectionId],
+          subsections: {},
+        };
+
+        // Also clean subsections
+        if (report.data[sectionId].subsections) {
+          Object.keys(report.data[sectionId].subsections).forEach(
+            (subsectionId) => {
+              if (!subsectionId.startsWith("view-")) {
+                cleanedData[sectionId].subsections[subsectionId] =
+                  report.data[sectionId].subsections[subsectionId];
+              } else {
+                reportCleaned = true;
+              }
+            }
+          );
+        }
+      } else {
+        reportCleaned = true;
+      }
+    });
+
+    if (reportCleaned) {
+      cleaned = true;
+      console.log(`Cleaned report: ${report.title}`);
+    }
+
+    return {
+      ...report,
+      data: cleanedData,
+    };
+  });
+
+  if (cleaned) {
+    localStorage.setItem("savedReports", JSON.stringify(cleanedReports));
+    console.log("Cleaned up corrupted saved reports");
+  }
+}
+
 function loadSavedReports() {
+  // Clean up any corrupted reports first
+  cleanupSavedReports();
+
   const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
   const listContainer = document.getElementById("saved-reports-list");
 
@@ -4467,6 +4582,20 @@ function backToReportsList() {
   showSavedReportsList();
 }
 
+// Helper function to check if table data has meaningful content
+function hasTableDataContent(tableData) {
+  if (!tableData || !tableData.rows || tableData.rows.length === 0) {
+    return false;
+  }
+
+  // Check if any row has meaningful content
+  return tableData.rows.some((row) => {
+    if (!row || row.length === 0) return false;
+    // Check if any cell in the row has non-empty content
+    return row.some((cell) => cell && cell.trim() !== "");
+  });
+}
+
 // Function to render a saved report in view-only mode
 function renderViewOnlyReport(reportData) {
   const reportContent = document.getElementById("viewed-report-content");
@@ -4495,6 +4624,7 @@ function renderViewOnlyReport(reportData) {
     sectionContent.className = "section-content";
 
     // Process subsections
+    let hasAnySubsections = false;
     if (sectionData.subsections) {
       Object.keys(sectionData.subsections).forEach((subsectionId) => {
         const subsectionData = sectionData.subsections[subsectionId];
@@ -4517,25 +4647,38 @@ function renderViewOnlyReport(reportData) {
         tablesContainer.className = "tables-container";
         tablesContainer.id = `view-${subsectionId}-tables`;
 
-        // Process tables
+        // Process tables (only if they have meaningful content)
+        let hasAnyTables = false;
+
         if (subsectionData.tables && subsectionData.tables.length > 0) {
           subsectionData.tables.forEach((tableData, tableIndex) => {
-            const tableWrapper = createViewOnlyTable(
-              subsectionId,
-              tableData,
-              tableIndex
-            );
-            tablesContainer.appendChild(tableWrapper);
+            // Check if table has meaningful content before rendering
+            if (hasTableDataContent(tableData)) {
+              const tableWrapper = createViewOnlyTable(
+                subsectionId,
+                tableData,
+                tableIndex
+              );
+              tablesContainer.appendChild(tableWrapper);
+              hasAnyTables = true;
+            }
           });
         }
 
-        subsectionElement.appendChild(tablesContainer);
-        sectionContent.appendChild(subsectionElement);
+        // Only add the subsection if it has tables with content
+        if (hasAnyTables) {
+          subsectionElement.appendChild(tablesContainer);
+          sectionContent.appendChild(subsectionElement);
+          hasAnySubsections = true;
+        }
       });
     }
 
-    sectionElement.appendChild(sectionContent);
-    reportContent.appendChild(sectionElement);
+    // Only add the section if it has subsections with content
+    if (hasAnySubsections) {
+      sectionElement.appendChild(sectionContent);
+      reportContent.appendChild(sectionElement);
+    }
   });
 }
 
