@@ -1433,27 +1433,10 @@ async function saveData(showAlert = true) {
   console.log("localStorage size:", JSON.stringify(data).length, "characters");
 
   if (showAlert) {
-    // Ask if user wants to save as a named report
-    const saveAsNamed = await showCustomConfirm(
-      "Would you like to save this as a named report that can be viewed in the VIEW-ONLY section?",
-      "Save Report"
-    );
-
-    if (saveAsNamed) {
-      const saved = await saveReportWithTitle();
-      if (saved) {
-        await showCustomAlert(
-          "Report saved successfully!",
-          "Success",
-          "success"
-        );
-      }
-    } else {
-      await showCustomAlert(
-        "Data auto-saved successfully!",
-        "Success",
-        "success"
-      );
+    // Automatically save as a named report with auto-generated title
+    const saved = await saveReportWithAutoTitle();
+    if (saved) {
+      await showCustomAlert("Report saved successfully!", "Success", "success");
     }
   }
 }
@@ -4381,64 +4364,70 @@ function switchTab(tabName) {
 }
 
 // Saved Reports Management Functions
-function saveReportWithTitle() {
+function saveReportWithAutoTitle() {
   return new Promise((resolve) => {
-    // Create a simple prompt modal for report title
-    const title = prompt("Enter a title for this report:");
-    if (title && title.trim()) {
-      const data = extractAllData();
+    // Auto-generate title based on current date and time
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+    });
+    const timeStr = now.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+    const title = `Executive Summary - ${dateStr} ${timeStr}`;
 
-      // Clean up any view-only sections that might have been saved previously
-      const cleanedData = {};
-      Object.keys(data).forEach((sectionId) => {
-        if (!sectionId.startsWith("view-")) {
-          cleanedData[sectionId] = {
-            ...data[sectionId],
-            subsections: {},
-          };
+    const data = extractAllData();
 
-          // Also clean subsections
-          if (data[sectionId].subsections) {
-            Object.keys(data[sectionId].subsections).forEach((subsectionId) => {
-              if (!subsectionId.startsWith("view-")) {
-                cleanedData[sectionId].subsections[subsectionId] =
-                  data[sectionId].subsections[subsectionId];
-              }
-            });
-          }
+    // Clean up any view-only sections that might have been saved previously
+    const cleanedData = {};
+    Object.keys(data).forEach((sectionId) => {
+      if (!sectionId.startsWith("view-")) {
+        cleanedData[sectionId] = {
+          ...data[sectionId],
+          subsections: {},
+        };
+
+        // Also clean subsections
+        if (data[sectionId].subsections) {
+          Object.keys(data[sectionId].subsections).forEach((subsectionId) => {
+            if (!subsectionId.startsWith("view-")) {
+              cleanedData[sectionId].subsections[subsectionId] =
+                data[sectionId].subsections[subsectionId];
+            }
+          });
         }
-      });
-
-      const savedReports = JSON.parse(
-        localStorage.getItem("savedReports") || "[]"
-      );
-
-      const newReport = {
-        id: Date.now().toString(),
-        title: title.trim(),
-        data: cleanedData,
-        savedDate: new Date().toISOString(),
-        formattedDate:
-          new Date().toLocaleDateString() +
-          " " +
-          new Date().toLocaleTimeString(),
-      };
-
-      // Add to beginning of array (most recent first)
-      savedReports.unshift(newReport);
-
-      // Keep only last 50 reports to prevent localStorage bloat
-      if (savedReports.length > 50) {
-        savedReports.splice(50);
       }
+    });
 
-      localStorage.setItem("savedReports", JSON.stringify(savedReports));
+    const savedReports = JSON.parse(
+      localStorage.getItem("savedReports") || "[]"
+    );
 
-      console.log("Report saved with title:", title);
-      resolve(true);
-    } else {
-      resolve(false);
+    const newReport = {
+      id: Date.now().toString(),
+      title: title,
+      data: cleanedData,
+      savedDate: new Date().toISOString(),
+      formattedDate:
+        new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString(),
+    };
+
+    // Add to beginning of array (most recent first)
+    savedReports.unshift(newReport);
+
+    // Keep only last 50 reports to prevent localStorage bloat
+    if (savedReports.length > 50) {
+      savedReports.splice(50);
     }
+
+    localStorage.setItem("savedReports", JSON.stringify(savedReports));
+
+    console.log("Report saved with auto-generated title:", title);
+    resolve(true);
   });
 }
 
