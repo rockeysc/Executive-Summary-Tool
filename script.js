@@ -59,10 +59,10 @@ const tableTemplates = {
     },
   },
   "nps-data": {
-    headers: ["", "MTD", "QTD", "YTD"],
+    headers: ["", "MTD", "QTD", "YTD", ""],
     defaultRows: [
-      ["NETWORK", "", "", ""],
-      ["T1", "", "", ""],
+      ["NETWORK", "", "", "", ""],
+      ["T1", "", "", "", ""],
     ],
     specialFormatting: {
       customLayout: true,
@@ -75,8 +75,9 @@ const tableTemplates = {
       "SITE(S)",
       "AVG. MONTHLY REV.",
       "DARK DATE & REASON",
+      "",
     ],
-    defaultRows: [["", "", "", ""]],
+    defaultRows: [["", "", "", "", ""]],
     specialFormatting: {
       customLayout: true,
       churnedTable: true,
@@ -297,6 +298,16 @@ function addTable(subsectionId, tableType) {
   const container = document.getElementById(`${subsectionId}-tables`);
   const template = tableTemplates[tableType];
 
+  if (!container) {
+    console.error(
+      "No container found for subsection:",
+      subsectionId,
+      "- looking for element with ID:",
+      `${subsectionId}-tables`
+    );
+    return;
+  }
+
   if (!template) {
     console.error("No template found for:", tableType);
     return;
@@ -309,27 +320,24 @@ function addTable(subsectionId, tableType) {
   // Generate table rows with special formatting
   let rowsHTML = "";
   if (tableType === "performance-trends" && template.specialFormatting) {
+    // Generate div-based structure for performance trends
     rowsHTML = template.defaultRows
       .map((row, index) => {
         if (
           index === template.specialFormatting.observationsRow &&
           template.specialFormatting.mergeObservations
         ) {
-          // Special formatting for observations row - merge last two columns
-          return `<tr>
-          <td class="metric-label">${row[0]}</td>
-          <td contenteditable="true" colspan="2" class="observations-cell">${row[1]}</td>
-        </tr>`;
+          // Special formatting for observations row - span across both data columns
+          return `<div class="performance-row observations-row">
+          <div class="metric-label">${row[0]}</div>
+          <div contenteditable="true" class="observations-cell">${row[1]}</div>
+        </div>`;
         } else {
-          return `<tr>${row
-            .map((cell, cellIndex) => {
-              if (cellIndex === 0) {
-                return `<td class="metric-label">${cell}</td>`;
-              } else {
-                return `<td contenteditable="true">${cell}</td>`;
-              }
-            })
-            .join("")}</tr>`;
+          return `<div class="performance-row">
+            <div class="metric-label">${row[0]}</div>
+            <div contenteditable="true" class="metric-data">${row[1]}</div>
+            <div contenteditable="true" class="metric-data">${row[2]}</div>
+          </div>`;
         }
       })
       .join("");
@@ -338,39 +346,47 @@ function addTable(subsectionId, tableType) {
     template.specialFormatting &&
     template.specialFormatting.customLayout
   ) {
-    // Special formatting for A/B test updates
+    // Generate div-based structure for A/B test updates
     rowsHTML = template.defaultRows
       .map((row, index) => {
         if (index === 4) {
-          // START DATE row with 3 columns - use date inputs
-          return `<tr>
-            <td class="ab-label">${row[0]}</td>
-            <td>${createDateInput(row[1])}</td>
-            <td class="ab-label">${row[2]}</td>
-            <td>${createDateInput(row[3])}</td>
-            <td class="ab-label">${row[4]}</td>
-            <td>${createDateInput(row[5])}</td>
-          </tr>`;
+          // START DATE row with 3 date inputs
+          return `<div class="ab-test-row dates-row">
+            <div class="ab-label">${row[0]}</div>
+            <div class="ab-date-input">${createDateInput(row[1])}</div>
+            <div class="ab-label">${row[2]}</div>
+            <div class="ab-date-input">${createDateInput(row[3])}</div>
+            <div class="ab-label">${row[4]}</div>
+            <div class="ab-date-input">${createDateInput(row[5])}</div>
+          </div>`;
         } else if (index === template.specialFormatting.statusRow) {
           // TEST STATUS row spans multiple columns
-          return `<tr>
-            <td class="ab-label">${row[0]}</td>
-            <td contenteditable="true" colspan="5" class="test-status-cell">${row[1]}</td>
-          </tr>`;
+          return `<div class="ab-test-row status-row">
+            <div class="ab-label">${row[0]}</div>
+            <div contenteditable="true" class="test-status-cell">${row[1]}</div>
+          </div>`;
         } else if (index === 3) {
           // STAKEHOLDERS row spans all remaining columns
-          return `<tr>
-            <td class="ab-label">${row[0]}</td>
-            <td contenteditable="true" colspan="5" class="stakeholders-cell">${row[1]}</td>
-          </tr>`;
+          return `<div class="ab-test-row stakeholders-row">
+            <div class="ab-label">${row[0]}</div>
+            <div contenteditable="true" class="stakeholders-cell">${row[1]}</div>
+          </div>`;
+        } else if (index === 0) {
+          // PUBLISHER row with TIER spanning wider
+          return `<div class="ab-test-row regular-row publisher-row">
+            <div class="ab-label">${row[0]}</div>
+            <div contenteditable="true" class="ab-data">${row[1]}</div>
+            <div class="ab-label">${row[2]}</div>
+            <div contenteditable="true" class="ab-data-tier-wide">${row[3]}</div>
+          </div>`;
         } else {
           // Regular rows with 4 columns
-          return `<tr>
-            <td class="ab-label">${row[0]}</td>
-            <td contenteditable="true">${row[1]}</td>
-            <td class="ab-label">${row[2]}</td>
-            <td contenteditable="true" colspan="3">${row[3]}</td>
-          </tr>`;
+          return `<div class="ab-test-row regular-row">
+            <div class="ab-label">${row[0]}</div>
+            <div contenteditable="true" class="ab-data">${row[1]}</div>
+            <div class="ab-label">${row[2]}</div>
+            <div contenteditable="true" class="ab-data-wide">${row[3]}</div>
+          </div>`;
         }
       })
       .join("");
@@ -379,27 +395,27 @@ function addTable(subsectionId, tableType) {
     template.specialFormatting &&
     template.specialFormatting.customLayout
   ) {
-    // Special formatting for newly onboarded publishers
+    // Generate div-based structure for newly onboarded publishers
     rowsHTML = template.defaultRows
       .map((row, index) => {
         if (index === template.specialFormatting.demandStatusRow) {
           // DEMAND STATUS row spans multiple columns
-          return `<tr>
-            <td class="publisher-label">${row[0]}</td>
-            <td contenteditable="true" colspan="3" class="demand-status-cell">${row[1]}</td>
-          </tr>`;
+          return `<div class="newly-onboarded-row demand-status-row">
+            <div class="publisher-label">${row[0]}</div>
+            <div contenteditable="true" class="demand-status-cell">${row[1]}</div>
+          </div>`;
         } else {
           // Regular rows with 4 columns
-          return `<tr>
-            <td class="publisher-label">${row[0]}</td>
-            <td contenteditable="true">${row[1]}</td>
-            <td class="publisher-label">${row[2]}</td>
-            <td>${
+          return `<div class="newly-onboarded-row regular-row">
+            <div class="publisher-label">${row[0]}</div>
+            <div contenteditable="true" class="publisher-data">${row[1]}</div>
+            <div class="publisher-label">${row[2]}</div>
+            <div class="publisher-data-input">${
               isDateField(row[2], 3, index, tableType)
                 ? createDateInput(row[3])
                 : `<span contenteditable="true">${row[3]}</span>`
-            }</td>
-          </tr>`;
+            }</div>
+          </div>`;
         }
       })
       .join("");
@@ -408,27 +424,27 @@ function addTable(subsectionId, tableType) {
     template.specialFormatting &&
     template.specialFormatting.customLayout
   ) {
-    // Special formatting for in-progress publishers
+    // Generate div-based structure for in-progress publishers
     rowsHTML = template.defaultRows
       .map((row, index) => {
         if (index === template.specialFormatting.statusRow) {
           // STATUS row spans multiple columns
-          return `<tr>
-            <td class="progress-label">${row[0]}</td>
-            <td contenteditable="true" colspan="3" class="progress-status-cell">${row[1]}</td>
-          </tr>`;
+          return `<div class="in-progress-row status-row">
+            <div class="progress-label">${row[0]}</div>
+            <div contenteditable="true" class="progress-status-cell">${row[1]}</div>
+          </div>`;
         } else {
           // Regular rows with 4 columns
-          return `<tr>
-            <td class="progress-label">${row[0]}</td>
-            <td contenteditable="true">${row[1]}</td>
-            <td class="progress-label">${row[2]}</td>
-            <td>${
+          return `<div class="in-progress-row regular-row">
+            <div class="progress-label">${row[0]}</div>
+            <div contenteditable="true" class="progress-data">${row[1]}</div>
+            <div class="progress-label">${row[2]}</div>
+            <div class="progress-data-input">${
               isDateField(row[2], 3, index, tableType)
                 ? createDateInput(row[3])
                 : `<span contenteditable="true">${row[3]}</span>`
-            }</td>
-          </tr>`;
+            }</div>
+          </div>`;
         }
       })
       .join("");
@@ -437,15 +453,19 @@ function addTable(subsectionId, tableType) {
     template.specialFormatting &&
     template.specialFormatting.npsTable
   ) {
-    // Special formatting for NPS table
+    // Generate div-based structure for NPS table
     rowsHTML = template.defaultRows
       .map((row, index) => {
-        return `<tr>
-          <td class="nps-label">${row[0]}</td>
-          <td contenteditable="true" class="nps-score">${row[1]}</td>
-          <td contenteditable="true" class="nps-score">${row[2]}</td>
-          <td contenteditable="true" class="nps-score">${row[3]}</td>
-        </tr>`;
+        // For NPS table, all initial rows are default rows (NETWORK and T1)
+        return `<div class="nps-row nps-default-row">
+          <div class="nps-label">${row[0]}</div>
+          <div contenteditable="true" class="nps-score">${row[1]}</div>
+          <div contenteditable="true" class="nps-score">${row[2]}</div>
+          <div contenteditable="true" class="nps-score">${row[3]}</div>
+          <div class="row-actions">
+            <button class="add-row-btn" onclick="addRowToTable(this)" title="Add row"><span class="material-icons">add</span></button>
+          </div>
+        </div>`;
       })
       .join("");
   } else if (
@@ -453,15 +473,24 @@ function addTable(subsectionId, tableType) {
     template.specialFormatting &&
     template.specialFormatting.churnedTable
   ) {
-    // Special formatting for churned data table
+    // Generate simple div-based structure for churned data table (all 4 columns + actions)
     rowsHTML = template.defaultRows
       .map((row, index) => {
-        return `<tr>
-          <td contenteditable="true" class="churned-publisher">${row[0]}</td>
-          <td contenteditable="true" class="churned-site">${row[1]}</td>
-          <td contenteditable="true" class="churned-revenue">${row[2]}</td>
-          <td contenteditable="true" class="churned-reason">${row[3]}</td>
-        </tr>`;
+        // First row gets + button, others get - button (if there are multiple rows)
+        const isFirstRow = index === 0;
+        const actionButton = isFirstRow
+          ? `<button class="add-row-btn" onclick="addRowToTable(this)" title="Add row"><span class="material-icons">add</span></button>`
+          : `<button class="remove-row-btn" onclick="removeRowFromTable(this)" title="Remove row"><span class="material-icons">remove</span></button>`;
+
+        return `<div class="churned-row ${
+          isFirstRow ? "churned-default-row" : "churned-added-row"
+        }">
+          <div contenteditable="true" class="churned-publisher">${row[0]}</div>
+          <div contenteditable="true" class="churned-site">${row[1]}</div>
+          <div contenteditable="true" class="churned-revenue">${row[2]}</div>
+          <div contenteditable="true" class="churned-reason">${row[3]}</div>
+          <div class="row-actions">${actionButton}</div>
+        </div>`;
       })
       .join("");
   } else if (
@@ -469,14 +498,14 @@ function addTable(subsectionId, tableType) {
     template.specialFormatting &&
     template.specialFormatting.noticeTable
   ) {
-    // Special formatting for notice data table
+    // Generate div-based structure for notice data table
     rowsHTML = template.defaultRows
       .map((row, index) => {
-        return `<tr>
-          <td contenteditable="true" class="notice-publisher">${row[0]}</td>
-          <td contenteditable="true" class="notice-revenue">${row[1]}</td>
-          <td contenteditable="true" class="notice-reason">${row[2]}</td>
-        </tr>`;
+        return `<div class="notice-row">
+          <div contenteditable="true" class="notice-publisher">${row[0]}</div>
+          <div contenteditable="true" class="notice-revenue">${row[1]}</div>
+          <div contenteditable="true" class="notice-reason">${row[2]}</div>
+        </div>`;
       })
       .join("");
   } else if (
@@ -484,49 +513,49 @@ function addTable(subsectionId, tableType) {
     template.specialFormatting &&
     template.specialFormatting.publisherUpdatesTable
   ) {
-    // Special formatting for publisher updates table
+    // Generate div-based structure for publisher updates table
     rowsHTML = template.defaultRows
       .map((row, index) => {
         if (index === 0) {
           // First row: PUBLISHER | name | TIER | 1 | AVG. MONTHLY REV. | 20,000
-          return `<tr>
-            <td class="updates-label">${row[0]}</td>
-            <td contenteditable="true" class="updates-data">${row[1]}</td>
-            <td class="updates-label">${row[2]}</td>
-            <td contenteditable="true" class="updates-data">${row[3]}</td>
-            <td class="updates-label">${row[4]}</td>
-            <td contenteditable="true" class="updates-data">${row[5]}</td>
-          </tr>`;
+          return `<div class="updates-row updates-row-1">
+            <div class="updates-label">${row[0]}</div>
+            <div contenteditable="true" class="updates-data">${row[1]}</div>
+            <div class="updates-label">${row[2]}</div>
+            <div contenteditable="true" class="updates-data">${row[3]}</div>
+            <div class="updates-label">${row[4]}</div>
+            <div contenteditable="true" class="updates-data">${row[5]}</div>
+          </div>`;
         } else if (index === 1) {
           // Second row: STAGE | Onboarding or Ongoing | | | CSM | Kristen
-          return `<tr>
-            <td class="updates-label">${row[0]}</td>
-            <td contenteditable="true" class="updates-data" colspan="3">${row[1]}</td>
-            <td class="updates-label">${row[3]}</td>
-            <td contenteditable="true" class="updates-data">${row[4]}</td>
-          </tr>`;
+          return `<div class="updates-row updates-row-2">
+            <div class="updates-label">${row[0]}</div>
+            <div contenteditable="true" class="updates-data updates-data-span3">${row[1]}</div>
+            <div class="updates-label">${row[3]}</div>
+            <div contenteditable="true" class="updates-data">${row[4]}</div>
+          </div>`;
         } else if (index === 2) {
           // Third row: STAKEHOLDERS | list of those involved | | | LAST COMM. DATE | date
-          return `<tr>
-            <td class="updates-label">${row[0]}</td>
-            <td contenteditable="true" class="updates-data" colspan="3">${
+          return `<div class="updates-row updates-row-3">
+            <div class="updates-label">${row[0]}</div>
+            <div contenteditable="true" class="updates-data updates-data-span3">${
               row[1]
-            }</td>
-            <td class="updates-label">${row[3]}</td>
-            <td class="updates-data">${createDateInput(row[4])}</td>
-          </tr>`;
+            }</div>
+            <div class="updates-label">${row[3]}</div>
+            <div class="updates-data">${createDateInput(row[4])}</div>
+          </div>`;
         } else if (index === 3) {
           // Fourth row: ISSUE(S)/ UPDATE(S) spanning full width
-          return `<tr>
-            <td class="updates-label">${row[0]}</td>
-            <td contenteditable="true" class="updates-issues" colspan="5">${row[1]}</td>
-          </tr>`;
+          return `<div class="updates-row updates-row-4">
+            <div class="updates-label">${row[0]}</div>
+            <div contenteditable="true" class="updates-issues updates-data-span5">${row[1]}</div>
+          </div>`;
         } else if (index === 4) {
           // Fifth row: NEXT STEPS spanning full width
-          return `<tr>
-            <td class="updates-label">${row[0]}</td>
-            <td contenteditable="true" class="updates-steps" colspan="5">${row[1]}</td>
-          </tr>`;
+          return `<div class="updates-row updates-row-5">
+            <div class="updates-label">${row[0]}</div>
+            <div contenteditable="true" class="updates-steps updates-data-span5">${row[1]}</div>
+          </div>`;
         }
       })
       .join("");
@@ -541,7 +570,123 @@ function addTable(subsectionId, tableType) {
       .join("");
   }
 
-  let tableHTML = `
+  let tableHTML = "";
+
+  if (tableType === "performance-trends") {
+    // Generate div-based structure for performance trends
+    tableHTML = `
+        <div class="performance-trends-table">
+            <div class="performance-header">
+                ${template.headers
+                  .map((header, index) => {
+                    // Check if this header should be editable (week picker)
+                    if (
+                      template.specialFormatting &&
+                      template.specialFormatting.editableHeaders &&
+                      template.specialFormatting.editableHeaders.includes(index)
+                    ) {
+                      const weekRange = header.split(" (")[0]; // Extract just the date range
+                      const description = header.includes("Prior Wednesday")
+                        ? " (Prior Wednesday and Prior 7 Days)"
+                        : header.includes("Most Recent")
+                        ? " (Most Recent Wednesday and Prior 7 Days)"
+                        : "";
+                      return `<div class="performance-header-cell editable-header">${weekRange}${description}<br>${createWeekPicker(
+                        weekRange,
+                        "header-week-picker"
+                      )}</div>`;
+                    } else {
+                      return `<div class="performance-header-cell">${header}</div>`;
+                    }
+                  })
+                  .join("")}
+            </div>
+            <div class="performance-body">
+                ${rowsHTML}
+            </div>
+        </div>`;
+  } else if (tableType === "ab-test-updates") {
+    // Generate div-based structure for A/B test updates
+    tableHTML = `
+        <div class="ab-test-table">
+            <div class="ab-test-body">
+                ${rowsHTML}
+            </div>
+        </div>`;
+  } else if (tableType === "newly-onboarded-publishers") {
+    // Generate div-based structure for newly onboarded publishers
+    tableHTML = `
+        <div class="newly-onboarded-table">
+            <div class="newly-onboarded-body">
+                ${rowsHTML}
+            </div>
+        </div>`;
+  } else if (tableType === "in-progress-publishers") {
+    // Generate div-based structure for in-progress publishers
+    tableHTML = `
+        <div class="in-progress-table">
+            <div class="in-progress-body">
+                ${rowsHTML}
+            </div>
+        </div>`;
+  } else if (tableType === "nps-data") {
+    // Generate div-based structure for NPS data
+    tableHTML = `
+        <div class="nps-table">
+            <div class="nps-header">
+                ${template.headers
+                  .map(
+                    (header) => `<div class="nps-header-cell">${header}</div>`
+                  )
+                  .join("")}
+            </div>
+            <div class="nps-body">
+                ${rowsHTML}
+            </div>
+        </div>`;
+  } else if (tableType === "churned-data") {
+    // Generate simple div-based structure for churned data (just PUBLISHER for now)
+    tableHTML = `
+        <div class="churned-table">
+            <div class="churned-header">
+                ${template.headers
+                  .map(
+                    (header) =>
+                      `<div class="churned-header-cell">${header}</div>`
+                  )
+                  .join("")}
+            </div>
+            <div class="churned-body">
+                ${rowsHTML}
+            </div>
+        </div>`;
+  } else if (tableType === "notice-data") {
+    // Generate div-based structure for notice data
+    tableHTML = `
+        <div class="notice-table">
+            <div class="notice-header">
+                ${template.headers
+                  .map(
+                    (header) =>
+                      `<div class="notice-header-cell">${header}</div>`
+                  )
+                  .join("")}
+            </div>
+            <div class="notice-body">
+                ${rowsHTML}
+            </div>
+        </div>`;
+  } else if (tableType === "publisher-updates") {
+    // Generate div-based structure for publisher updates
+    tableHTML = `
+        <div class="publisher-updates-table">
+            <div class="publisher-updates-body">
+                ${rowsHTML}
+            </div>
+        </div>`;
+  } else {
+    // Keep existing table structure for other table types
+    tableHTML = `
         <table class="data-table">
             <thead>
                 <tr>
@@ -575,17 +720,28 @@ function addTable(subsectionId, tableType) {
             <tbody>
                 ${rowsHTML}
             </tbody>
-        </table>
+        </table>`;
+  }
+
+  // Complete the table HTML with mobile cards and actions
+  const completeTableHTML = `
+        ${tableHTML}
 
         <!-- Mobile card layout for add-new-content -->
         ${generateEditableMobileCards(template, tableType, tableCounter)}
 
-        <div class="table-actions">
+        ${
+          subsectionId !== "wow-performance" &&
+          subsectionId !== "nps" &&
+          subsectionId !== "recently-churned"
+            ? `<div class="table-actions">
             <button class="remove-table-btn" onclick="removeTable('table-${tableCounter}')"><span class="material-icons">delete</span> Remove Table</button>
-        </div>
+        </div>`
+            : ""
+        }
     `;
 
-  tableWrapper.innerHTML = tableHTML;
+  tableWrapper.innerHTML = completeTableHTML;
   container.appendChild(tableWrapper);
 
   // Add event listeners for the new table
@@ -1149,12 +1305,6 @@ function showAutoSaveStatus(status, message) {
   const statusElement = document.getElementById("auto-save-status");
   if (!statusElement) return;
 
-  // Don't show auto-save status in view-only mode
-  const viewOnlyContent = document.getElementById("view-only-content");
-  if (viewOnlyContent && viewOnlyContent.classList.contains("active")) {
-    return;
-  }
-
   const iconElement = statusElement.querySelector(".material-icons");
   const textElement = statusElement.querySelector(".status-text");
 
@@ -1191,12 +1341,6 @@ function showAutoSaveStatus(status, message) {
 
 // Enhanced auto-save function
 function triggerAutoSave() {
-  // Don't trigger auto-save in view-only mode
-  const viewOnlyContent = document.getElementById("view-only-content");
-  if (viewOnlyContent && viewOnlyContent.classList.contains("active")) {
-    return;
-  }
-
   const now = Date.now();
 
   // Clear existing timeout
@@ -1284,65 +1428,33 @@ async function saveData(showAlert = true) {
   const data = extractAllData();
   localStorage.setItem("executiveSummaryData", JSON.stringify(data));
 
-  // Also save as a historical report only when manually saving
-  if (showAlert) {
-    saveAsHistoricalReport(data);
-  }
-
   console.log("Data saved to localStorage:", data);
   console.log("localStorage size:", JSON.stringify(data).length, "characters");
 
   if (showAlert) {
-    await showCustomAlert("Report saved successfully!", "Success", "success");
-  }
-}
+    // Ask if user wants to save as a named report
+    const saveAsNamed = await showCustomConfirm(
+      "Would you like to save this as a named report that can be viewed in the VIEW-ONLY section?",
+      "Save Report"
+    );
 
-// Function to save report as historical/view-only report
-function saveAsHistoricalReport(data) {
-  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
-
-  const reportData = {
-    id: Date.now().toString(),
-    title: `Executive Summary - ${new Date().toLocaleDateString()}`,
-    date: new Date().toISOString(),
-    data: data,
-    summary: generateReportSummary(data),
-  };
-
-  savedReports.unshift(reportData); // Add to beginning of array
-
-  // Keep only the last 50 reports to prevent storage overflow
-  if (savedReports.length > 50) {
-    savedReports.splice(50);
-  }
-
-  localStorage.setItem("savedReports", JSON.stringify(savedReports));
-}
-
-// Function to generate a summary of the report
-function generateReportSummary(data) {
-  let summary = "";
-  let tableCount = 0;
-
-  Object.keys(data).forEach((sectionKey) => {
-    const section = data[sectionKey];
-    if (section.subsections) {
-      Object.keys(section.subsections).forEach((subsectionKey) => {
-        const subsection = section.subsections[subsectionKey];
-        if (subsection.tables && subsection.tables.length > 0) {
-          tableCount += subsection.tables.length;
-        }
-      });
+    if (saveAsNamed) {
+      const saved = await saveReportWithTitle();
+      if (saved) {
+        await showCustomAlert(
+          "Report saved successfully!",
+          "Success",
+          "success"
+        );
+      }
+    } else {
+      await showCustomAlert(
+        "Data auto-saved successfully!",
+        "Success",
+        "success"
+      );
     }
-  });
-
-  summary = `Contains ${tableCount} table${
-    tableCount !== 1 ? "s" : ""
-  } across ${Object.keys(data).length} section${
-    Object.keys(data).length !== 1 ? "s" : ""
-  }`;
-
-  return summary;
+  }
 }
 
 // Function to extract all data from tables
@@ -1365,14 +1477,61 @@ function extractAllData() {
       const subsectionTitle = subsection.querySelector(
         ".subsection-header h3"
       ).textContent;
+      // Look for traditional tables and div-based tables
       const tables = subsection.querySelectorAll(".data-table");
+      const performanceTables = subsection.querySelectorAll(
+        ".performance-trends-table"
+      );
+      const abTestTables = subsection.querySelectorAll(".ab-test-table");
+      const newlyOnboardedTables = subsection.querySelectorAll(
+        ".newly-onboarded-table"
+      );
+      const inProgressTables =
+        subsection.querySelectorAll(".in-progress-table");
+      const npsTables = subsection.querySelectorAll(".nps-table");
+      const churnedTables = subsection.querySelectorAll(".churned-table");
+      const noticeTables = subsection.querySelectorAll(".notice-table");
+      const publisherUpdatesTables = subsection.querySelectorAll(
+        ".publisher-updates-table"
+      );
 
       data[sectionId].subsections[subsectionId] = {
         title: subsectionTitle,
         tables: [],
       };
 
+      // Helper function to check if a table has meaningful content
+      function hasTableContent(tableElement, tableType = "traditional") {
+        if (tableType === "traditional") {
+          const rows = tableElement.querySelectorAll("tbody tr");
+          return (
+            rows.length > 0 &&
+            Array.from(rows).some((row) => {
+              const cells = row.querySelectorAll("td");
+              return Array.from(cells).some(
+                (cell) => cell.textContent.trim() !== ""
+              );
+            })
+          );
+        } else {
+          // For div-based tables, check for rows with content
+          const rows = tableElement.querySelectorAll("[class*='-row']");
+          return (
+            rows.length > 0 &&
+            Array.from(rows).some((row) => {
+              return row.textContent.trim() !== "";
+            })
+          );
+        }
+      }
+
+      // Process traditional tables (only if they have content)
       tables.forEach((table) => {
+        // Skip empty tables
+        if (!hasTableContent(table, "traditional")) {
+          return;
+        }
+
         const tableData = {
           headers: [],
           rows: [],
@@ -1502,56 +1661,493 @@ function extractAllData() {
 
         data[sectionId].subsections[subsectionId].tables.push(tableData);
       });
+
+      // Process div-based performance trends tables (only if they have content)
+      performanceTables.forEach((performanceTable) => {
+        // Skip empty tables
+        if (!hasTableContent(performanceTable, "div")) {
+          return;
+        }
+
+        const tableData = {
+          headers: [],
+          rows: [],
+        };
+
+        // Extract headers from performance trends table
+        const headers = performanceTable.querySelectorAll(
+          ".performance-header-cell"
+        );
+        headers.forEach((header) => {
+          // Check if this header has a week picker
+          const weekPicker = header.querySelector(".week-picker");
+          if (weekPicker) {
+            // Extract the week range and description
+            const displayValue = weekPicker.getAttribute("data-display-value");
+            const headerText = header.textContent;
+            const description = headerText.includes("Prior Wednesday")
+              ? " (Prior Wednesday and Prior 7 Days)"
+              : headerText.includes("Most Recent")
+              ? " (Most Recent Wednesday and Prior 7 Days)"
+              : "";
+            tableData.headers.push(
+              (displayValue || formatWeekRange(weekPicker.value)) + description
+            );
+          } else {
+            tableData.headers.push(header.textContent);
+          }
+        });
+
+        // Extract rows from performance trends table
+        const rows = performanceTable.querySelectorAll(".performance-row");
+        rows.forEach((row) => {
+          const rowData = [];
+
+          if (row.classList.contains("observations-row")) {
+            // Handle observations row with merged cells
+            const label = row.querySelector(".metric-label");
+            const observationsCell = row.querySelector(".observations-cell");
+
+            rowData.push(label ? label.textContent.trim() : "");
+            rowData.push(
+              observationsCell ? observationsCell.textContent.trim() : ""
+            );
+            // Add empty string for the third column since observations spans both data columns
+            rowData.push("");
+          } else {
+            // Handle regular metric rows
+            const label = row.querySelector(".metric-label");
+            const dataCells = row.querySelectorAll(".metric-data");
+
+            rowData.push(label ? label.textContent.trim() : "");
+            dataCells.forEach((cell) => {
+              rowData.push(cell.textContent.trim());
+            });
+          }
+
+          tableData.rows.push(rowData);
+        });
+
+        data[sectionId].subsections[subsectionId].tables.push(tableData);
+      });
+
+      // Process div-based A/B test tables (only if they have content)
+      abTestTables.forEach((abTestTable) => {
+        // Skip empty tables
+        if (!hasTableContent(abTestTable, "div")) {
+          return;
+        }
+
+        const tableData = {
+          headers: ["", "", "", "", "", ""], // A/B test tables have 6 logical columns
+          rows: [],
+        };
+
+        // Extract rows from A/B test table
+        const rows = abTestTable.querySelectorAll(".ab-test-row");
+        rows.forEach((row) => {
+          const rowData = [];
+
+          if (row.classList.contains("dates-row")) {
+            // Handle dates row with 6 columns
+            const labels = row.querySelectorAll(".ab-label");
+            const dateInputs = row.querySelectorAll(".ab-date-input");
+
+            // Interleave labels and date inputs
+            for (let i = 0; i < 3; i++) {
+              if (labels[i]) {
+                rowData.push(labels[i].textContent.trim());
+              } else {
+                rowData.push("");
+              }
+
+              if (dateInputs[i]) {
+                // Extract date value from date input
+                const dateInput = dateInputs[i].querySelector(
+                  ".date-input, .date-input-hidden"
+                );
+                if (dateInput) {
+                  const displayValue =
+                    dateInput.getAttribute("data-display-value");
+                  rowData.push(displayValue || dateInput.value || "");
+                } else {
+                  rowData.push(dateInputs[i].textContent.trim());
+                }
+              } else {
+                rowData.push("");
+              }
+            }
+          } else if (
+            row.classList.contains("stakeholders-row") ||
+            row.classList.contains("status-row")
+          ) {
+            // Handle stakeholders and status rows (span multiple columns)
+            const label = row.querySelector(".ab-label");
+            const cell = row.querySelector(
+              ".stakeholders-cell, .test-status-cell"
+            );
+
+            rowData.push(label ? label.textContent.trim() : "");
+            rowData.push(cell ? cell.textContent.trim() : "");
+            // Add empty strings for remaining columns
+            rowData.push("", "", "", "");
+          } else {
+            // Handle regular rows with 4 logical columns
+            const allCells = row.querySelectorAll(
+              ".ab-test-cell, .ab-label, .ab-data, .ab-data-wide, .ab-data-tier-wide"
+            );
+
+            // For regular rows, we expect: label1, data1, label2, data2
+            if (allCells.length >= 4) {
+              rowData.push(allCells[0] ? allCells[0].textContent.trim() : "");
+              rowData.push(allCells[1] ? allCells[1].textContent.trim() : "");
+              rowData.push(allCells[2] ? allCells[2].textContent.trim() : "");
+              rowData.push(allCells[3] ? allCells[3].textContent.trim() : "");
+            } else {
+              // Fallback: try specific selectors
+              const label1 = row.querySelector(".ab-label:first-child");
+              const data1 = row.querySelector(".ab-data:first-child, .ab-data");
+              const label2 = row.querySelector(".ab-label:last-child");
+              const data2 = row.querySelector(
+                ".ab-data-wide, .ab-data-tier-wide"
+              );
+
+              rowData.push(label1 ? label1.textContent.trim() : "");
+              rowData.push(data1 ? data1.textContent.trim() : "");
+              rowData.push(label2 ? label2.textContent.trim() : "");
+              rowData.push(data2 ? data2.textContent.trim() : "");
+            }
+            // Add empty strings for remaining columns to maintain 6-column structure
+            rowData.push("", "");
+          }
+
+          tableData.rows.push(rowData);
+        });
+
+        data[sectionId].subsections[subsectionId].tables.push(tableData);
+      });
+
+      // Process div-based newly onboarded tables (only if they have content)
+      newlyOnboardedTables.forEach((newlyOnboardedTable) => {
+        // Skip empty tables
+        if (!hasTableContent(newlyOnboardedTable, "div")) {
+          return;
+        }
+
+        const tableData = {
+          headers: ["", "", "", ""], // Newly onboarded tables have 4 logical columns
+          rows: [],
+        };
+
+        // Extract rows from newly onboarded table
+        const rows = newlyOnboardedTable.querySelectorAll(
+          ".newly-onboarded-row"
+        );
+        rows.forEach((row) => {
+          const rowData = [];
+
+          if (row.classList.contains("demand-status-row")) {
+            // Handle demand status row (spans multiple columns)
+            const label = row.querySelector(".publisher-label");
+            const cell = row.querySelector(".demand-status-cell");
+
+            rowData.push(label ? label.textContent.trim() : "");
+            rowData.push(cell ? cell.textContent.trim() : "");
+            // Add empty strings for remaining columns
+            rowData.push("", "");
+          } else {
+            // Handle regular rows with 4 columns
+            const label1 = row.querySelector(".publisher-label:first-child");
+            const data1 = row.querySelector(".publisher-data");
+            const label2 = row.querySelector(".publisher-label:last-child");
+            const dataInput = row.querySelector(".publisher-data-input");
+
+            rowData.push(label1 ? label1.textContent.trim() : "");
+            rowData.push(data1 ? data1.textContent.trim() : "");
+            rowData.push(label2 ? label2.textContent.trim() : "");
+
+            // Handle date input or regular span
+            if (dataInput) {
+              const dateInput = dataInput.querySelector(
+                ".date-input, .date-input-hidden"
+              );
+              if (dateInput) {
+                const displayValue =
+                  dateInput.getAttribute("data-display-value");
+                rowData.push(displayValue || dateInput.value || "");
+              } else {
+                const span = dataInput.querySelector(
+                  'span[contenteditable="true"]'
+                );
+                rowData.push(
+                  span ? span.textContent.trim() : dataInput.textContent.trim()
+                );
+              }
+            } else {
+              rowData.push("");
+            }
+          }
+
+          tableData.rows.push(rowData);
+        });
+
+        data[sectionId].subsections[subsectionId].tables.push(tableData);
+      });
+
+      // Process div-based in-progress tables (only if they have content)
+      inProgressTables.forEach((inProgressTable) => {
+        // Skip empty tables
+        if (!hasTableContent(inProgressTable, "div")) {
+          return;
+        }
+
+        const tableData = {
+          headers: ["", "", "", ""], // In-progress tables have 4 logical columns
+          rows: [],
+        };
+
+        // Extract rows from in-progress table
+        const rows = inProgressTable.querySelectorAll(".in-progress-row");
+        rows.forEach((row) => {
+          const rowData = [];
+
+          if (row.classList.contains("status-row")) {
+            // Handle status row (spans multiple columns)
+            const label = row.querySelector(".progress-label");
+            const cell = row.querySelector(".progress-status-cell");
+
+            rowData.push(label ? label.textContent.trim() : "");
+            rowData.push(cell ? cell.textContent.trim() : "");
+            // Add empty strings for remaining columns
+            rowData.push("", "");
+          } else {
+            // Handle regular rows with 4 columns
+            const label1 = row.querySelector(".progress-label:first-child");
+            const data1 = row.querySelector(".progress-data");
+            const label2 = row.querySelector(".progress-label:last-child");
+            const dataInput = row.querySelector(".progress-data-input");
+
+            rowData.push(label1 ? label1.textContent.trim() : "");
+            rowData.push(data1 ? data1.textContent.trim() : "");
+            rowData.push(label2 ? label2.textContent.trim() : "");
+
+            // Handle date input or regular span
+            if (dataInput) {
+              const dateInput = dataInput.querySelector(
+                ".date-input, .date-input-hidden"
+              );
+              if (dateInput) {
+                const displayValue =
+                  dateInput.getAttribute("data-display-value");
+                rowData.push(displayValue || dateInput.value || "");
+              } else {
+                const span = dataInput.querySelector(
+                  'span[contenteditable="true"]'
+                );
+                rowData.push(
+                  span ? span.textContent.trim() : dataInput.textContent.trim()
+                );
+              }
+            } else {
+              rowData.push("");
+            }
+          }
+
+          tableData.rows.push(rowData);
+        });
+
+        data[sectionId].subsections[subsectionId].tables.push(tableData);
+      });
+
+      // Process div-based NPS tables (only if they have content)
+      npsTables.forEach((npsTable) => {
+        // Skip empty tables
+        if (!hasTableContent(npsTable, "div")) {
+          return;
+        }
+
+        const tableData = {
+          headers: ["", "MTD", "QTD", "YTD", ""], // NPS tables have 5 columns
+          rows: [],
+        };
+
+        // Extract rows from NPS table
+        const rows = npsTable.querySelectorAll(".nps-row");
+        rows.forEach((row) => {
+          const rowData = [];
+
+          const label = row.querySelector(".nps-label");
+          const scores = row.querySelectorAll(".nps-score");
+
+          rowData.push(label ? label.textContent.trim() : "");
+          scores.forEach((score) => {
+            rowData.push(score ? score.textContent.trim() : "");
+          });
+          // Add empty string for actions column
+          rowData.push("");
+
+          tableData.rows.push(rowData);
+        });
+
+        data[sectionId].subsections[subsectionId].tables.push(tableData);
+      });
+
+      // Process div-based churned tables (only if they have content)
+      churnedTables.forEach((churnedTable) => {
+        // Skip empty tables
+        if (!hasTableContent(churnedTable, "div")) {
+          return;
+        }
+
+        const tableData = {
+          headers: [
+            "PUBLISHER",
+            "SITE(S)",
+            "AVG. MONTHLY REV.",
+            "DARK DATE & REASON",
+            "",
+          ], // Churned tables have 5 columns (4 data + 1 actions)
+          rows: [],
+        };
+
+        // Extract rows from churned table
+        const rows = churnedTable.querySelectorAll(".churned-row");
+        rows.forEach((row) => {
+          const rowData = [];
+
+          const publisher = row.querySelector(".churned-publisher");
+          const site = row.querySelector(".churned-site");
+          const revenue = row.querySelector(".churned-revenue");
+          const reason = row.querySelector(".churned-reason");
+
+          rowData.push(publisher ? publisher.textContent.trim() : "");
+          rowData.push(site ? site.textContent.trim() : "");
+          rowData.push(revenue ? revenue.textContent.trim() : "");
+          rowData.push(reason ? reason.textContent.trim() : "");
+          rowData.push(""); // Empty column for actions
+
+          tableData.rows.push(rowData);
+        });
+
+        data[sectionId].subsections[subsectionId].tables.push(tableData);
+      });
+
+      // Process div-based notice tables (only if they have content)
+      noticeTables.forEach((noticeTable) => {
+        // Skip empty tables
+        if (!hasTableContent(noticeTable, "div")) {
+          return;
+        }
+
+        const tableData = {
+          headers: ["PUBLISHER", "AVG. MONTHLY REV.", "NOTICE DATE & REASON"], // Notice tables have 3 columns
+          rows: [],
+        };
+
+        // Extract rows from notice table
+        const rows = noticeTable.querySelectorAll(".notice-row");
+        rows.forEach((row) => {
+          const rowData = [];
+
+          const publisher = row.querySelector(".notice-publisher");
+          const revenue = row.querySelector(".notice-revenue");
+          const reason = row.querySelector(".notice-reason");
+
+          rowData.push(publisher ? publisher.textContent.trim() : "");
+          rowData.push(revenue ? revenue.textContent.trim() : "");
+          rowData.push(reason ? reason.textContent.trim() : "");
+
+          tableData.rows.push(rowData);
+        });
+
+        data[sectionId].subsections[subsectionId].tables.push(tableData);
+      });
+
+      // Process div-based publisher updates tables (only if they have content)
+      publisherUpdatesTables.forEach((publisherUpdatesTable) => {
+        // Skip empty tables
+        if (!hasTableContent(publisherUpdatesTable, "div")) {
+          return;
+        }
+
+        const tableData = {
+          headers: ["", "", "", "", "", ""], // Publisher updates tables have 6 logical columns
+          rows: [],
+        };
+
+        // Extract rows from publisher updates table
+        const rows = publisherUpdatesTable.querySelectorAll(".updates-row");
+        rows.forEach((row, rowIndex) => {
+          const rowData = ["", "", "", "", "", ""]; // Initialize 6-column structure
+
+          if (rowIndex === 0) {
+            // Row 1: PUBLISHER | name | TIER | 1 | AVG. MONTHLY REV. | 20,000
+            const cells = row.querySelectorAll(".updates-label, .updates-data");
+            cells.forEach((cell, cellIndex) => {
+              if (cellIndex < 6) {
+                rowData[cellIndex] = cell.textContent.trim();
+              }
+            });
+          } else if (rowIndex === 1) {
+            // Row 2: STAGE | Onboarding (spans 3) | CSM | Kristen
+            const label1 = row.querySelector(".updates-label");
+            const data1 = row.querySelector(".updates-data");
+            const label2 = row.querySelector(".updates-label:last-of-type");
+            const data2 = row.querySelector(".updates-data:last-of-type");
+
+            rowData[0] = label1 ? label1.textContent.trim() : "";
+            rowData[1] = data1 ? data1.textContent.trim() : "";
+            rowData[3] = label2 ? label2.textContent.trim() : "";
+            rowData[4] = data2 ? data2.textContent.trim() : "";
+          } else if (rowIndex === 2) {
+            // Row 3: STAKEHOLDERS | list (spans 3) | LAST COMM. DATE | date
+            const label1 = row.querySelector(".updates-label");
+            const data1 = row.querySelector(".updates-data");
+            const label2 = row.querySelector(".updates-label:last-of-type");
+            const dateCell = row.querySelector(".updates-data:last-of-type");
+
+            rowData[0] = label1 ? label1.textContent.trim() : "";
+            rowData[1] = data1 ? data1.textContent.trim() : "";
+            rowData[3] = label2 ? label2.textContent.trim() : "";
+
+            // Handle date input
+            if (dateCell) {
+              const dateInput = dateCell.querySelector(
+                ".date-input, .date-input-hidden"
+              );
+              if (dateInput) {
+                const displayValue =
+                  dateInput.getAttribute("data-display-value");
+                rowData[4] = displayValue || dateInput.value || "";
+              } else {
+                rowData[4] = dateCell.textContent.trim();
+              }
+            }
+          } else if (rowIndex === 3) {
+            // Row 4: ISSUE(S)/UPDATE(S) | content (spans 5)
+            const label = row.querySelector(".updates-label");
+            const issues = row.querySelector(".updates-issues");
+
+            rowData[0] = label ? label.textContent.trim() : "";
+            rowData[1] = issues ? issues.textContent.trim() : "";
+          } else if (rowIndex === 4) {
+            // Row 5: NEXT STEPS | content (spans 5)
+            const label = row.querySelector(".updates-label");
+            const steps = row.querySelector(".updates-steps");
+
+            rowData[0] = label ? label.textContent.trim() : "";
+            rowData[1] = steps ? steps.textContent.trim() : "";
+          }
+
+          tableData.rows.push(rowData);
+        });
+
+        data[sectionId].subsections[subsectionId].tables.push(tableData);
+      });
     });
   });
 
   return data;
-}
-
-// Function to load data and restore it to the interface
-function loadData() {
-  const savedData = localStorage.getItem("executiveSummaryData");
-  if (savedData) {
-    try {
-      const data = JSON.parse(savedData);
-      console.log("Loading saved data:", data);
-
-      // Clear existing tables first to prevent duplicates
-      clearAllTablesOnly();
-      console.log("Cleared tables before loading saved data");
-
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
-        let totalTablesRestored = 0;
-
-        // Restore data to each section
-        Object.keys(data).forEach((sectionId) => {
-          const section = data[sectionId];
-          if (section.subsections) {
-            Object.keys(section.subsections).forEach((subsectionId) => {
-              const subsection = section.subsections[subsectionId];
-              if (subsection.tables && subsection.tables.length > 0) {
-                console.log(
-                  `Restoring ${subsection.tables.length} table(s) for ${subsectionId}`
-                );
-                // Restore tables for this subsection
-                restoreTablesForSubsection(subsectionId, subsection.tables);
-                totalTablesRestored += subsection.tables.length;
-              }
-            });
-          }
-        });
-
-        console.log(
-          `Data loaded successfully - restored ${totalTablesRestored} tables total`
-        );
-      }, 50);
-    } catch (error) {
-      console.error("Error loading saved data:", error);
-      // If loading fails, clear tables to prevent duplicates
-      clearAllTablesOnly();
-    }
-  }
 }
 
 // Function to clear all tables without showing confirmation
@@ -1561,6 +2157,122 @@ function clearAllTablesOnly() {
   tableWrappers.forEach((wrapper) => {
     wrapper.remove();
   });
+}
+
+// Function to add default tables to ensure the app is always usable
+function addDefaultTables() {
+  console.log("Adding default tables...");
+
+  const tablesToAdd = [
+    { subsection: "wow-performance", type: "performance-trends" },
+    { subsection: "ab-test", type: "ab-test-updates" },
+    { subsection: "newly-onboarded", type: "newly-onboarded-publishers" },
+    { subsection: "in-progress", type: "in-progress-publishers" },
+    { subsection: "nps", type: "nps-data" },
+    { subsection: "recently-churned", type: "churned-data" },
+    { subsection: "gave-notice", type: "notice-data" },
+    { subsection: "publisher-issues", type: "publisher-updates" },
+  ];
+
+  tablesToAdd.forEach(({ subsection, type }) => {
+    try {
+      addTable(subsection, type);
+    } catch (error) {
+      console.error(`Failed to add table ${subsection}:`, error);
+    }
+  });
+
+  console.log("Default tables addition completed");
+
+  // Verify tables were actually created
+  setTimeout(() => {
+    const containers = [
+      "wow-performance-tables",
+      "ab-test-tables",
+      "newly-onboarded-tables",
+      "in-progress-tables",
+      "nps-tables",
+      "recently-churned-tables",
+      "gave-notice-tables",
+      "publisher-issues-tables",
+    ];
+
+    console.log("=== TABLE VERIFICATION ===");
+    containers.forEach((containerId) => {
+      const container = document.getElementById(containerId);
+      const tableCount = container ? container.children.length : 0;
+      console.log(`${containerId}: ${tableCount} tables`);
+      if (tableCount === 0) {
+        console.warn(`⚠️ No tables found in ${containerId}!`);
+      }
+    });
+    console.log("=== END VERIFICATION ===");
+  }, 200);
+}
+
+// Function to ensure all sections have at least one table
+function ensureAllSectionsHaveTables() {
+  console.log("Ensuring all sections have tables...");
+
+  const requiredTables = [
+    {
+      subsection: "wow-performance",
+      type: "performance-trends",
+      containerId: "wow-performance-tables",
+    },
+    {
+      subsection: "ab-test",
+      type: "ab-test-updates",
+      containerId: "ab-test-tables",
+    },
+    {
+      subsection: "newly-onboarded",
+      type: "newly-onboarded-publishers",
+      containerId: "newly-onboarded-tables",
+    },
+    {
+      subsection: "in-progress",
+      type: "in-progress-publishers",
+      containerId: "in-progress-tables",
+    },
+    { subsection: "nps", type: "nps-data", containerId: "nps-tables" },
+    {
+      subsection: "recently-churned",
+      type: "churned-data",
+      containerId: "recently-churned-tables",
+    },
+    {
+      subsection: "gave-notice",
+      type: "notice-data",
+      containerId: "gave-notice-tables",
+    },
+    {
+      subsection: "publisher-issues",
+      type: "publisher-updates",
+      containerId: "publisher-issues-tables",
+    },
+  ];
+
+  let tablesAdded = 0;
+
+  requiredTables.forEach(({ subsection, type, containerId }) => {
+    const container = document.getElementById(containerId);
+    if (container && container.children.length === 0) {
+      console.log(`Adding missing table for ${subsection}`);
+      try {
+        addTable(subsection, type);
+        tablesAdded++;
+      } catch (error) {
+        console.error(`Failed to add missing table for ${subsection}:`, error);
+      }
+    }
+  });
+
+  if (tablesAdded > 0) {
+    console.log(`Added ${tablesAdded} missing tables`);
+  } else {
+    console.log("All sections already have tables");
+  }
 }
 
 // Function to restore tables for a specific subsection
@@ -1583,26 +2295,106 @@ function restoreTablesForSubsection(subsectionId, tables) {
     return;
   }
 
-  // Create and populate each table
-  tables.forEach((tableData, index) => {
-    // Add a new table
+  // For NPS and recently-churned sections, only create one table and merge all data
+  if (subsectionId === "nps" || subsectionId === "recently-churned") {
+    // Only create one table for these sections
     addTable(subsectionId, tableType);
 
-    // Get the newly created table (it will be the last one)
+    // Get the newly created table
     const container = document.getElementById(`${subsectionId}-tables`);
     const tableWrappers = container.querySelectorAll(".table-wrapper");
     const newTableWrapper = tableWrappers[tableWrappers.length - 1];
 
-    if (newTableWrapper) {
-      // Populate the table with saved data
-      populateTableWithData(newTableWrapper, tableData, tableType);
+    if (newTableWrapper && tables.length > 0) {
+      // Use the first table's data (they should all be the same structure anyway)
+      populateTableWithData(newTableWrapper, tables[0], tableType);
     }
-  });
+  } else {
+    // For other sections, create multiple tables as before
+    tables.forEach((tableData, index) => {
+      // Add a new table
+      addTable(subsectionId, tableType);
+
+      // Get the newly created table (it will be the last one)
+      const container = document.getElementById(`${subsectionId}-tables`);
+      const tableWrappers = container.querySelectorAll(".table-wrapper");
+      const newTableWrapper = tableWrappers[tableWrappers.length - 1];
+
+      if (newTableWrapper) {
+        // Populate the table with saved data
+        populateTableWithData(newTableWrapper, tableData, tableType);
+      }
+    });
+  }
 }
 
 // Function to populate a table with saved data
 function populateTableWithData(tableWrapper, tableData, tableType) {
+  // Check if this is a performance trends table (div-based) or traditional table
+  const performanceTable = tableWrapper.querySelector(
+    ".performance-trends-table"
+  );
   const table = tableWrapper.querySelector(".data-table");
+
+  if (performanceTable && tableType === "performance-trends") {
+    // Handle div-based performance trends table
+    populatePerformanceTrendsWithData(performanceTable, tableData);
+    return;
+  }
+
+  const abTestTable = tableWrapper.querySelector(".ab-test-table");
+  if (abTestTable && tableType === "ab-test-updates") {
+    // Handle div-based A/B test table
+    populateABTestWithData(abTestTable, tableData);
+    return;
+  }
+
+  const newlyOnboardedTable = tableWrapper.querySelector(
+    ".newly-onboarded-table"
+  );
+  if (newlyOnboardedTable && tableType === "newly-onboarded-publishers") {
+    // Handle div-based newly onboarded table
+    populateNewlyOnboardedWithData(newlyOnboardedTable, tableData);
+    return;
+  }
+
+  const inProgressTable = tableWrapper.querySelector(".in-progress-table");
+  if (inProgressTable && tableType === "in-progress-publishers") {
+    // Handle div-based in-progress table
+    populateInProgressWithData(inProgressTable, tableData);
+    return;
+  }
+
+  const npsTable = tableWrapper.querySelector(".nps-table");
+  if (npsTable && tableType === "nps-data") {
+    // Handle div-based NPS table
+    populateNPSWithData(npsTable, tableData);
+    return;
+  }
+
+  const churnedTable = tableWrapper.querySelector(".churned-table");
+  if (churnedTable && tableType === "churned-data") {
+    // Handle div-based churned table
+    populateChurnedWithData(churnedTable, tableData);
+    return;
+  }
+
+  const noticeTable = tableWrapper.querySelector(".notice-table");
+  if (noticeTable && tableType === "notice-data") {
+    // Handle div-based notice table
+    populateNoticeWithData(noticeTable, tableData);
+    return;
+  }
+
+  const publisherUpdatesTable = tableWrapper.querySelector(
+    ".publisher-updates-table"
+  );
+  if (publisherUpdatesTable && tableType === "publisher-updates") {
+    // Handle div-based publisher updates table
+    populatePublisherUpdatesWithData(publisherUpdatesTable, tableData);
+    return;
+  }
+
   if (!table || !tableData) return;
 
   // Populate headers if they have editable content (like week pickers)
@@ -1687,6 +2479,495 @@ function populateTableWithData(tableWrapper, tableData, tableType) {
   // Also populate mobile cards if they exist
   // populateMobileCardsWithData(tableWrapper, tableData, tableType);
   // TODO: Implement mobile card population if needed
+}
+
+// Function to populate div-based performance trends table with saved data
+function populatePerformanceTrendsWithData(performanceTable, tableData) {
+  if (!performanceTable || !tableData) return;
+
+  // Populate headers if they have editable content (like week pickers)
+  const headerCells = performanceTable.querySelectorAll(
+    ".performance-header-cell"
+  );
+  if (tableData.headers && headerCells.length > 0) {
+    headerCells.forEach((headerCell, index) => {
+      if (
+        index < tableData.headers.length &&
+        headerCell.classList.contains("editable-header")
+      ) {
+        // This is an editable header (week picker)
+        const headerText = tableData.headers[index];
+        const weekRange = headerText.split(" (")[0]; // Extract just the date range
+        const description = headerText.includes("Prior Wednesday")
+          ? " (Prior Wednesday and Prior 7 Days)"
+          : headerText.includes("Most Recent")
+          ? " (Most Recent Wednesday and Prior 7 Days)"
+          : "";
+
+        headerCell.innerHTML = `${weekRange}${description}<br>${createWeekPicker(
+          weekRange,
+          "header-week-picker"
+        )}`;
+      }
+    });
+  }
+
+  // Populate performance rows
+  const rows = performanceTable.querySelectorAll(".performance-row");
+  if (!tableData.rows) return;
+
+  // Populate each row with data
+  tableData.rows.forEach((rowData, rowIndex) => {
+    if (rowIndex < rows.length) {
+      const row = rows[rowIndex];
+
+      if (row.classList.contains("observations-row")) {
+        // Handle observations row
+        const label = row.querySelector(".metric-label");
+        const observationsCell = row.querySelector(".observations-cell");
+
+        if (label && rowData[0] !== undefined) {
+          label.textContent = rowData[0];
+        }
+        if (observationsCell && rowData[1] !== undefined) {
+          observationsCell.textContent = rowData[1];
+        }
+      } else {
+        // Handle regular metric rows
+        const label = row.querySelector(".metric-label");
+        const dataCells = row.querySelectorAll(".metric-data");
+
+        if (label && rowData[0] !== undefined) {
+          label.textContent = rowData[0];
+        }
+
+        dataCells.forEach((cell, cellIndex) => {
+          const dataIndex = cellIndex + 1; // Skip the label column
+          if (dataIndex < rowData.length && rowData[dataIndex] !== undefined) {
+            cell.textContent = rowData[dataIndex];
+          }
+        });
+      }
+    }
+  });
+}
+
+// Function to populate div-based A/B test table with saved data
+function populateABTestWithData(abTestTable, tableData) {
+  if (!abTestTable || !tableData) return;
+
+  // Populate A/B test rows
+  const rows = abTestTable.querySelectorAll(".ab-test-row");
+  if (!tableData.rows) return;
+
+  // Populate each row with data
+  tableData.rows.forEach((rowData, rowIndex) => {
+    if (rowIndex < rows.length) {
+      const row = rows[rowIndex];
+
+      if (row.classList.contains("dates-row")) {
+        // Handle dates row with 6 columns (3 labels + 3 date inputs)
+        const labels = row.querySelectorAll(".ab-label");
+        const dateInputs = row.querySelectorAll(".ab-date-input");
+
+        // Populate labels and date inputs alternately
+        for (let i = 0; i < 3; i++) {
+          const labelIndex = i * 2;
+          const dateIndex = labelIndex + 1;
+
+          if (labels[i] && rowData[labelIndex] !== undefined) {
+            labels[i].textContent = rowData[labelIndex];
+          }
+
+          if (dateInputs[i] && rowData[dateIndex] !== undefined) {
+            // Handle date input population
+            const dateInput = dateInputs[i].querySelector(
+              ".date-input, .date-input-hidden"
+            );
+            if (dateInput && rowData[dateIndex]) {
+              const inputValue = formatDateForInput(rowData[dateIndex]);
+              dateInput.value = inputValue;
+              dateInput.setAttribute("data-display-value", rowData[dateIndex]);
+
+              const dateText = dateInputs[i].querySelector(".date-text");
+              if (dateText) {
+                dateText.textContent = rowData[dateIndex];
+              }
+            }
+          }
+        }
+      } else if (
+        row.classList.contains("stakeholders-row") ||
+        row.classList.contains("status-row")
+      ) {
+        // Handle stakeholders and status rows
+        const label = row.querySelector(".ab-label");
+        const cell = row.querySelector(".stakeholders-cell, .test-status-cell");
+
+        if (label && rowData[0] !== undefined) {
+          label.textContent = rowData[0];
+        }
+        if (cell && rowData[1] !== undefined) {
+          cell.textContent = rowData[1];
+        }
+      } else {
+        // Handle regular rows with 4 logical columns
+        const label1 = row.querySelector(".ab-label:first-child");
+        const data1 = row.querySelector(".ab-data:first-child");
+        const label2 = row.querySelector(".ab-label:last-child");
+        const data2 = row.querySelector(".ab-data-wide");
+
+        if (label1 && rowData[0] !== undefined) {
+          label1.textContent = rowData[0];
+        }
+        if (data1 && rowData[1] !== undefined) {
+          data1.textContent = rowData[1];
+        }
+        if (label2 && rowData[2] !== undefined) {
+          label2.textContent = rowData[2];
+        }
+        if (data2 && rowData[3] !== undefined) {
+          data2.textContent = rowData[3];
+        }
+      }
+    }
+  });
+}
+
+// Function to populate div-based newly onboarded table with saved data
+function populateNewlyOnboardedWithData(newlyOnboardedTable, tableData) {
+  if (!newlyOnboardedTable || !tableData) return;
+
+  // Populate newly onboarded rows
+  const rows = newlyOnboardedTable.querySelectorAll(".newly-onboarded-row");
+  if (!tableData.rows) return;
+
+  // Populate each row with data
+  tableData.rows.forEach((rowData, rowIndex) => {
+    if (rowIndex < rows.length) {
+      const row = rows[rowIndex];
+
+      if (row.classList.contains("demand-status-row")) {
+        // Handle demand status row
+        const label = row.querySelector(".publisher-label");
+        const cell = row.querySelector(".demand-status-cell");
+
+        if (label && rowData[0] !== undefined) {
+          label.textContent = rowData[0];
+        }
+        if (cell && rowData[1] !== undefined) {
+          cell.textContent = rowData[1];
+        }
+      } else {
+        // Handle regular rows with 4 columns
+        const label1 = row.querySelector(".publisher-label:first-child");
+        const data1 = row.querySelector(".publisher-data");
+        const label2 = row.querySelector(".publisher-label:last-child");
+        const dataInput = row.querySelector(".publisher-data-input");
+
+        if (label1 && rowData[0] !== undefined) {
+          label1.textContent = rowData[0];
+        }
+        if (data1 && rowData[1] !== undefined) {
+          data1.textContent = rowData[1];
+        }
+        if (label2 && rowData[2] !== undefined) {
+          label2.textContent = rowData[2];
+        }
+
+        if (dataInput && rowData[3] !== undefined) {
+          // Handle date input or regular span
+          const dateInput = dataInput.querySelector(
+            ".date-input, .date-input-hidden"
+          );
+          if (dateInput && rowData[3]) {
+            const inputValue = formatDateForInput(rowData[3]);
+            dateInput.value = inputValue;
+            dateInput.setAttribute("data-display-value", rowData[3]);
+
+            const dateText = dataInput.querySelector(".date-text");
+            if (dateText) {
+              dateText.textContent = rowData[3];
+            }
+          } else {
+            const span = dataInput.querySelector(
+              'span[contenteditable="true"]'
+            );
+            if (span) {
+              span.textContent = rowData[3];
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// Function to populate div-based in-progress table with saved data
+function populateInProgressWithData(inProgressTable, tableData) {
+  if (!inProgressTable || !tableData) return;
+
+  // Populate in-progress rows
+  const rows = inProgressTable.querySelectorAll(".in-progress-row");
+  if (!tableData.rows) return;
+
+  // Populate each row with data
+  tableData.rows.forEach((rowData, rowIndex) => {
+    if (rowIndex < rows.length) {
+      const row = rows[rowIndex];
+
+      if (row.classList.contains("status-row")) {
+        // Handle status row
+        const label = row.querySelector(".progress-label");
+        const cell = row.querySelector(".progress-status-cell");
+
+        if (label && rowData[0] !== undefined) {
+          label.textContent = rowData[0];
+        }
+        if (cell && rowData[1] !== undefined) {
+          cell.textContent = rowData[1];
+        }
+      } else {
+        // Handle regular rows with 4 columns
+        const label1 = row.querySelector(".progress-label:first-child");
+        const data1 = row.querySelector(".progress-data");
+        const label2 = row.querySelector(".progress-label:last-child");
+        const dataInput = row.querySelector(".progress-data-input");
+
+        if (label1 && rowData[0] !== undefined) {
+          label1.textContent = rowData[0];
+        }
+        if (data1 && rowData[1] !== undefined) {
+          data1.textContent = rowData[1];
+        }
+        if (label2 && rowData[2] !== undefined) {
+          label2.textContent = rowData[2];
+        }
+
+        if (dataInput && rowData[3] !== undefined) {
+          // Handle date input or regular span
+          const dateInput = dataInput.querySelector(
+            ".date-input, .date-input-hidden"
+          );
+          if (dateInput && rowData[3]) {
+            const inputValue = formatDateForInput(rowData[3]);
+            dateInput.value = inputValue;
+            dateInput.setAttribute("data-display-value", rowData[3]);
+
+            const dateText = dataInput.querySelector(".date-text");
+            if (dateText) {
+              dateText.textContent = rowData[3];
+            }
+          } else {
+            const span = dataInput.querySelector(
+              'span[contenteditable="true"]'
+            );
+            if (span) {
+              span.textContent = rowData[3];
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// Function to populate div-based NPS table with saved data
+function populateNPSWithData(npsTable, tableData) {
+  if (!npsTable || !tableData) return;
+
+  // Populate NPS rows
+  const rows = npsTable.querySelectorAll(".nps-row");
+  if (!tableData.rows) return;
+
+  // Populate each row with data
+  tableData.rows.forEach((rowData, rowIndex) => {
+    if (rowIndex < rows.length) {
+      const row = rows[rowIndex];
+
+      const label = row.querySelector(".nps-label");
+      const scores = row.querySelectorAll(".nps-score");
+
+      if (label && rowData[0] !== undefined) {
+        label.textContent = rowData[0];
+      }
+
+      scores.forEach((score, scoreIndex) => {
+        if (rowData[scoreIndex + 1] !== undefined) {
+          score.textContent = rowData[scoreIndex + 1];
+        }
+      });
+    }
+  });
+}
+
+// Function to populate div-based churned table with saved data
+function populateChurnedWithData(churnedTable, tableData) {
+  if (!churnedTable || !tableData) return;
+
+  // Populate churned rows
+  const rows = churnedTable.querySelectorAll(".churned-row");
+  if (!tableData.rows) return;
+
+  // Populate each row with data
+  tableData.rows.forEach((rowData, rowIndex) => {
+    if (rowIndex < rows.length) {
+      const row = rows[rowIndex];
+
+      const publisher = row.querySelector(".churned-publisher");
+      const site = row.querySelector(".churned-site");
+      const revenue = row.querySelector(".churned-revenue");
+      const reason = row.querySelector(".churned-reason");
+
+      if (publisher && rowData[0] !== undefined) {
+        publisher.textContent = rowData[0];
+      }
+      if (site && rowData[1] !== undefined) {
+        site.textContent = rowData[1];
+      }
+      if (revenue && rowData[2] !== undefined) {
+        revenue.textContent = rowData[2];
+      }
+      if (reason && rowData[3] !== undefined) {
+        reason.textContent = rowData[3];
+      }
+    }
+  });
+}
+
+// Function to populate div-based notice table with saved data
+function populateNoticeWithData(noticeTable, tableData) {
+  if (!noticeTable || !tableData) return;
+
+  // Populate notice rows
+  const rows = noticeTable.querySelectorAll(".notice-row");
+  if (!tableData.rows) return;
+
+  // Populate each row with data
+  tableData.rows.forEach((rowData, rowIndex) => {
+    if (rowIndex < rows.length) {
+      const row = rows[rowIndex];
+
+      const publisher = row.querySelector(".notice-publisher");
+      const revenue = row.querySelector(".notice-revenue");
+      const reason = row.querySelector(".notice-reason");
+
+      if (publisher && rowData[0] !== undefined) {
+        publisher.textContent = rowData[0];
+      }
+      if (revenue && rowData[1] !== undefined) {
+        revenue.textContent = rowData[1];
+      }
+      if (reason && rowData[2] !== undefined) {
+        reason.textContent = rowData[2];
+      }
+    }
+  });
+}
+
+// Function to populate div-based NPS table with saved data
+function populateNPSWithData(npsTable, tableData) {
+  if (!npsTable || !tableData) return;
+
+  // Populate NPS rows
+  const rows = npsTable.querySelectorAll(".nps-row");
+  if (!tableData.rows) return;
+
+  // Populate each row with data
+  tableData.rows.forEach((rowData, rowIndex) => {
+    if (rowIndex < rows.length) {
+      const row = rows[rowIndex];
+
+      const label = row.querySelector(".nps-label");
+      const scores = row.querySelectorAll(".nps-score");
+
+      if (label && rowData[0] !== undefined) {
+        label.textContent = rowData[0];
+      }
+
+      scores.forEach((score, scoreIndex) => {
+        if (rowData[scoreIndex + 1] !== undefined) {
+          score.textContent = rowData[scoreIndex + 1];
+        }
+      });
+    }
+  });
+}
+
+// Function to populate div-based publisher updates table with saved data
+function populatePublisherUpdatesWithData(publisherUpdatesTable, tableData) {
+  if (!publisherUpdatesTable || !tableData) return;
+
+  // Populate publisher updates rows
+  const rows = publisherUpdatesTable.querySelectorAll(".updates-row");
+  if (!tableData.rows) return;
+
+  // Populate each row with data based on the complex structure
+  tableData.rows.forEach((rowData, rowIndex) => {
+    if (rowIndex < rows.length) {
+      const row = rows[rowIndex];
+
+      if (rowIndex === 0) {
+        // Row 1: PUBLISHER | name | TIER | 1 | AVG. MONTHLY REV. | 20,000
+        const cells = row.querySelectorAll(".updates-label, .updates-data");
+        cells.forEach((cell, cellIndex) => {
+          if (cellIndex < 6 && rowData[cellIndex] !== undefined) {
+            if (cell.classList.contains("updates-data")) {
+              cell.textContent = rowData[cellIndex];
+            }
+          }
+        });
+      } else if (rowIndex === 1) {
+        // Row 2: STAGE | Onboarding (spans 3) | CSM | Kristen
+        const data1 = row.querySelector(".updates-data");
+        const data2 = row.querySelector(".updates-data:last-of-type");
+
+        if (data1 && rowData[1] !== undefined) {
+          data1.textContent = rowData[1];
+        }
+        if (data2 && rowData[4] !== undefined) {
+          data2.textContent = rowData[4];
+        }
+      } else if (rowIndex === 2) {
+        // Row 3: STAKEHOLDERS | list (spans 3) | LAST COMM. DATE | date
+        const data1 = row.querySelector(".updates-data");
+        const dateCell = row.querySelector(".updates-data:last-of-type");
+
+        if (data1 && rowData[1] !== undefined) {
+          data1.textContent = rowData[1];
+        }
+
+        // Handle date input
+        if (dateCell && rowData[4] !== undefined) {
+          const dateInput = dateCell.querySelector(
+            ".date-input, .date-input-hidden"
+          );
+          if (dateInput) {
+            dateInput.value = rowData[4];
+            dateInput.setAttribute("data-display-value", rowData[4]);
+            // Update display if it's a visible date input
+            if (dateInput.classList.contains("date-input")) {
+              dateInput.setAttribute("placeholder", rowData[4] || "mm/dd/yyyy");
+            }
+          } else {
+            dateCell.textContent = rowData[4];
+          }
+        }
+      } else if (rowIndex === 3) {
+        // Row 4: ISSUE(S)/UPDATE(S) | content (spans 5)
+        const issues = row.querySelector(".updates-issues");
+        if (issues && rowData[1] !== undefined) {
+          issues.textContent = rowData[1];
+        }
+      } else if (rowIndex === 4) {
+        // Row 5: NEXT STEPS | content (spans 5)
+        const steps = row.querySelector(".updates-steps");
+        if (steps && rowData[1] !== undefined) {
+          steps.textContent = rowData[1];
+        }
+      }
+    }
+  });
 }
 
 // Function to add a row to an existing table
@@ -2121,40 +3402,74 @@ document.addEventListener("DOMContentLoaded", function () {
   clearAllTablesOnly();
   console.log("Cleared existing tables");
 
-  // Check if we have saved data first
-  const savedData = localStorage.getItem("executiveSummaryData");
+  // Initialize tab navigation
+  console.log("Initializing Executive Summary Tool with VIEW-ONLY section...");
 
-  if (savedData) {
-    console.log("Found saved data, loading...");
-    // Load saved data if available
-    setTimeout(() => {
-      loadData();
-    }, 100);
-  } else {
-    console.log("No saved data found, adding default tables...");
-    // Add initial tables for demonstration only if no saved data exists
-    setTimeout(() => {
-      addTable("wow-performance", "performance-trends");
-      addTable("ab-test", "ab-test-updates");
-      addTable("newly-onboarded", "newly-onboarded-publishers");
-      addTable("in-progress", "in-progress-publishers");
-      addTable("nps", "nps-data");
-      addTable("recently-churned", "churned-data");
-      addTable("gave-notice", "notice-data");
-      addTable("publisher-issues", "publisher-updates");
-      console.log("Default tables added");
-    }, 100);
+  // Load saved reports on startup
+  if (document.getElementById("view-only-content")) {
+    console.log("VIEW-ONLY section found, loading saved reports...");
   }
+
+  // Always ensure tables are available - first try to load saved data, then ensure defaults exist
+  setTimeout(() => {
+    const savedData = localStorage.getItem("executiveSummaryData");
+
+    if (savedData) {
+      console.log("Found saved data, loading...");
+      try {
+        const data = JSON.parse(savedData);
+        console.log("Loading saved data:", data);
+
+        let totalTablesRestored = 0;
+
+        // Restore data to each section
+        Object.keys(data).forEach((sectionId) => {
+          const section = data[sectionId];
+          if (section.subsections) {
+            Object.keys(section.subsections).forEach((subsectionId) => {
+              const subsection = section.subsections[subsectionId];
+              if (subsection.tables && subsection.tables.length > 0) {
+                console.log(
+                  `Restoring ${subsection.tables.length} table(s) for ${subsectionId}`
+                );
+                // Restore tables for this subsection
+                restoreTablesForSubsection(subsectionId, subsection.tables);
+                totalTablesRestored += subsection.tables.length;
+              }
+            });
+          }
+        });
+
+        console.log(
+          `Data loaded successfully - restored ${totalTablesRestored} tables total`
+        );
+
+        // Always ensure we have default tables if none were restored
+        if (totalTablesRestored === 0) {
+          console.log(
+            "No tables were restored from saved data, adding default tables..."
+          );
+          addDefaultTables();
+        }
+      } catch (error) {
+        console.error("Error loading saved data:", error);
+        console.log("Loading failed, adding default tables...");
+        addDefaultTables();
+      }
+    } else {
+      console.log("No saved data found, adding default tables...");
+      addDefaultTables();
+    }
+
+    // Additional safety check - ensure all sections have at least one table
+    setTimeout(() => {
+      ensureAllSectionsHaveTables();
+    }, 200);
+  }, 100);
 
   // Auto-save when page becomes hidden (user switches tabs or minimizes)
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) {
-      // Don't auto-save in view-only mode
-      const viewOnlyContent = document.getElementById("view-only-content");
-      if (viewOnlyContent && viewOnlyContent.classList.contains("active")) {
-        return;
-      }
-
       // Force immediate save when page becomes hidden
       if (autoSaveTimeout) {
         clearTimeout(autoSaveTimeout);
@@ -2171,12 +3486,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Auto-save before page unload (user closes tab/window or navigates away)
   window.addEventListener("beforeunload", function (e) {
-    // Don't auto-save in view-only mode
-    const viewOnlyContent = document.getElementById("view-only-content");
-    if (viewOnlyContent && viewOnlyContent.classList.contains("active")) {
-      return;
-    }
-
     // Force immediate save before unload
     if (autoSaveTimeout) {
       clearTimeout(autoSaveTimeout);
@@ -2190,12 +3499,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Periodic auto-save every 30 seconds as a backup
   setInterval(() => {
-    // Don't auto-save in view-only mode
-    const viewOnlyContent = document.getElementById("view-only-content");
-    if (viewOnlyContent && viewOnlyContent.classList.contains("active")) {
-      return;
-    }
-
     const now = Date.now();
     if (now - lastSaveTime >= 30000) {
       // 30 seconds
@@ -2206,259 +3509,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }, 30000);
 });
-
-// Tab switching functionality
-function switchTab(tabName) {
-  // Hide all tab contents
-  document.querySelectorAll(".tab-content").forEach((content) => {
-    content.classList.remove("active");
-  });
-
-  // Remove active class from all tab buttons
-  document.querySelectorAll(".tab-btn").forEach((btn) => {
-    btn.classList.remove("active");
-  });
-
-  // Show selected tab content
-  document.getElementById(`${tabName}-content`).classList.add("active");
-  document.getElementById(`${tabName}-tab`).classList.add("active");
-
-  // Handle button visibility and auto-save status based on tab
-  const saveBtn = document.getElementById("save-btn");
-  const testBtn = document.getElementById("test-btn");
-  const clearBtn = document.getElementById("clear-btn");
-  const autoSaveStatus = document.getElementById("auto-save-status");
-
-  if (tabName === "view-only") {
-    // Hide buttons and auto-save status in view-only mode
-    if (saveBtn) saveBtn.style.display = "none";
-    if (testBtn) testBtn.style.display = "none";
-    if (clearBtn) clearBtn.style.display = "none";
-    if (autoSaveStatus) autoSaveStatus.style.display = "none";
-
-    // Load saved reports
-    loadSavedReports();
-  } else {
-    // Show buttons and auto-save status in add-new mode
-    if (saveBtn) saveBtn.style.display = "inline-block";
-    if (testBtn) testBtn.style.display = "inline-block";
-    if (clearBtn) clearBtn.style.display = "inline-block";
-    if (autoSaveStatus) autoSaveStatus.style.display = "flex";
-  }
-}
-
-// Function to load and display saved reports
-function loadSavedReports() {
-  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
-  const reportsList = document.getElementById("saved-reports-list");
-
-  if (savedReports.length === 0) {
-    reportsList.innerHTML = `
-      <div class="empty-reports-message">
-        <p>No saved reports yet. Create and save a report from the "Add New Report" tab to see it here.</p>
-      </div>
-    `;
-    return;
-  }
-
-  reportsList.innerHTML = savedReports
-    .map(
-      (report) => `
-    <div class="saved-report-card" onclick="viewReport('${report.id}')">
-      <button class="delete-report-btn" onclick="event.stopPropagation(); deleteReport('${
-        report.id
-      }')" title="Delete Report">
-        <span class="material-icons">close</span>
-      </button>
-      <h3>${report.title}</h3>
-      <div class="report-date">Saved on ${new Date(
-        report.date
-      ).toLocaleDateString()} at ${new Date(
-        report.date
-      ).toLocaleTimeString()}</div>
-      <div class="report-summary">${report.summary}</div>
-    </div>
-  `
-    )
-    .join("");
-}
-
-// Function to view a specific report
-async function viewReport(reportId) {
-  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
-  const report = savedReports.find((r) => r.id === reportId);
-
-  if (!report) {
-    await showCustomAlert("Report not found!", "Error", "error");
-    return;
-  }
-
-  // Hide reports list and show report viewer
-  document.querySelector(".saved-reports-container").style.display = "none";
-  document.getElementById("report-viewer").style.display = "block";
-
-  // Render the report content
-  renderReportContent(report);
-}
-
-// Function to check if a cell should be styled as a label in view-only mode
-function isViewOnlyLabelCell(cellContent, cellIndex, row) {
-  // List of label texts that should have grey background
-  const labelTexts = [
-    "TIER",
-    "% SPLIT",
-    "CSM/OBS",
-    "LAST COMM. DATE",
-    "START DATE",
-    "END DATE",
-    "LIVE DATE",
-    "EXP. LIVE DATE",
-    "PUBLISHER",
-    "COMPETITOR",
-    "STAGE",
-    "STAKEHOLDERS",
-    "TEST STATUS",
-    "PROJECTED REVENUE",
-    "OBS",
-    "DEMAND STATUS",
-    "STATUS",
-    "CSM",
-    "AVG. MONTHLY REV.",
-    "ISSUE(S)/ UPDATE(S)",
-    "NEXT STEPS",
-    "IMPRESSIONS",
-    "GROSS REVENUE",
-    "GROSS CPM",
-    "OBSERVATIONS",
-  ];
-
-  // Check if the cell content matches any label text
-  const trimmedContent = cellContent.toString().trim().toUpperCase();
-  if (labelTexts.includes(trimmedContent)) {
-    return true;
-  }
-
-  // For first column cells, check if they should be treated as data rather than labels
-  if (cellIndex === 0 && trimmedContent !== "") {
-    // Check if this is a known label text first
-    if (labelTexts.includes(trimmedContent)) {
-      return true; // This is definitely a label
-    }
-
-    // Special handling for CUSTOMER SUCCESS tables where first column contains publisher names
-    // Check if any cell in the row contains revenue data ($ or numbers) or "ended"/"reason"
-    const hasRevenueData = row.some((cell) => {
-      const cellStr = cell.toString();
-      return cellStr.includes("$") || /\$?\d{1,3}(,\d{3})+/.test(cellStr);
-    });
-
-    const hasStatusData = row.some((cell) => {
-      const cellStr = cell.toString().toLowerCase();
-      return (
-        cellStr.includes("ended") ||
-        cellStr.includes("reason") ||
-        cellStr.includes("contract")
-      );
-    });
-
-    // If this row contains revenue or status data, the first column is publisher name (data), not a label
-    if (hasRevenueData || hasStatusData) {
-      return false; // This is data, not a label
-    }
-
-    return true; // Default: first column is a label
-  }
-
-  return false;
-}
-
-// Function to render report content in view-only mode
-function renderReportContent(report) {
-  const viewerContent = document.getElementById("viewed-report-content");
-  let html = "";
-
-  Object.keys(report.data).forEach((sectionKey) => {
-    const section = report.data[sectionKey];
-    html += `
-      <section class="main-section">
-        <div class="section-header">
-          <h2>${section.title}</h2>
-        </div>
-        <div class="section-content">
-    `;
-
-    if (section.subsections) {
-      Object.keys(section.subsections).forEach((subsectionKey) => {
-        const subsection = section.subsections[subsectionKey];
-        html += `
-          <div class="subsection">
-            <div class="subsection-header">
-              <h3>${subsection.title}</h3>
-            </div>
-            <div class="tables-container">
-        `;
-
-        if (subsection.tables && subsection.tables.length > 0) {
-          subsection.tables.forEach((table) => {
-            html += `
-              <div class="table-wrapper">
-                <!-- Traditional table for desktop -->
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      ${table.headers
-                        .map((header) => `<th>${header}</th>`)
-                        .join("")}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${table.rows
-                      .map(
-                        (row) => `
-                      <tr>
-                        ${row
-                          .map((cell, cellIndex) => {
-                            // Check if this cell should be a label based on content
-                            const isLabelCell = isViewOnlyLabelCell(
-                              cell,
-                              cellIndex,
-                              row
-                            );
-                            const className = isLabelCell
-                              ? ' class="view-only-label"'
-                              : "";
-                            return `<td${className}>${cell}</td>`;
-                          })
-                          .join("")}
-                      </tr>
-                    `
-                      )
-                      .join("")}
-                  </tbody>
-                </table>
-
-                <!-- Mobile card layout -->
-                ${generateMobileTableCards(table)}
-              </div>
-            `;
-          });
-        }
-
-        html += `
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    html += `
-        </div>
-      </section>
-    `;
-  });
-
-  viewerContent.innerHTML = html;
-}
 
 // Function to generate mobile-friendly card layout for tables
 function generateMobileTableCards(table) {
@@ -2599,7 +3649,7 @@ function generateComplexLayoutCards(table) {
 
     // Try to find a meaningful header from the first non-empty cell
     const headerCell = row.find((cell) => cell && cell.trim() !== "");
-    const isLabelRow = headerCell && isViewOnlyLabelCell(headerCell, 0, row);
+    const isLabelRow = headerCell && headerCell.toString().trim() !== "";
 
     if (isLabelRow && headerCell) {
       mobileHTML += `<div class="mobile-table-header">${headerCell}</div>`;
@@ -3112,7 +4162,7 @@ function generateRowCard(table, row) {
   let cardHTML = `<div class="mobile-table-card">`;
 
   // Use first cell as card header if it's a label
-  const isFirstCellLabel = isViewOnlyLabelCell(row[0], 0, row);
+  const isFirstCellLabel = row[0] && row[0].toString().trim() !== "";
   if (isFirstCellLabel && row[0]) {
     cardHTML += `<div class="mobile-table-header">${row[0]}</div>`;
     cardHTML += `<div class="mobile-table-content">`;
@@ -3264,31 +4314,1446 @@ function getDataType(cellContent, headerOrLabel) {
   return "";
 }
 
-// Function to go back to reports list
-function backToReportsList() {
+// Auto-save every 30 seconds (silent)
+setInterval(() => saveData(false), 30000);
+
+// Tab Navigation Functions
+function switchTab(tabName) {
+  // Remove active class from all tabs and content
+  document
+    .querySelectorAll(".tab-btn")
+    .forEach((btn) => btn.classList.remove("active"));
+  document
+    .querySelectorAll(".tab-content")
+    .forEach((content) => content.classList.remove("active"));
+
+  // Add active class to selected tab and content
+  document.getElementById(`${tabName}-tab`).classList.add("active");
+  document.getElementById(`${tabName}-content`).classList.add("active");
+
+  // Hide/show header actions based on tab
+  const headerActions = document.querySelector(".header-actions");
+  if (tabName === "view-only") {
+    headerActions.style.display = "none";
+    loadSavedReports();
+  } else {
+    headerActions.style.display = "flex";
+  }
+}
+
+// Saved Reports Management Functions
+function saveReportWithTitle() {
+  return new Promise((resolve) => {
+    // Create a simple prompt modal for report title
+    const title = prompt("Enter a title for this report:");
+    if (title && title.trim()) {
+      const data = extractAllData();
+      const savedReports = JSON.parse(
+        localStorage.getItem("savedReports") || "[]"
+      );
+
+      const newReport = {
+        id: Date.now().toString(),
+        title: title.trim(),
+        data: data,
+        savedDate: new Date().toISOString(),
+        formattedDate:
+          new Date().toLocaleDateString() +
+          " " +
+          new Date().toLocaleTimeString(),
+      };
+
+      // Add to beginning of array (most recent first)
+      savedReports.unshift(newReport);
+
+      // Keep only last 50 reports to prevent localStorage bloat
+      if (savedReports.length > 50) {
+        savedReports.splice(50);
+      }
+
+      localStorage.setItem("savedReports", JSON.stringify(savedReports));
+
+      console.log("Report saved with title:", title);
+      resolve(true);
+    } else {
+      resolve(false);
+    }
+  });
+}
+
+function loadSavedReports() {
+  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+  const listContainer = document.getElementById("saved-reports-list");
+
+  if (savedReports.length === 0) {
+    listContainer.innerHTML = `
+      <div class="no-reports-message">
+        <div class="no-reports-icon">
+          <span class="material-icons">description</span>
+        </div>
+        <h3>No Saved Reports</h3>
+        <p>Save reports from the ADD NEW REPORT section to view them here.</p>
+      </div>
+    `;
+    return;
+  }
+
+  listContainer.innerHTML = savedReports
+    .map(
+      (report) => `
+    <div class="saved-report-item" onclick="viewSavedReport('${report.id}')">
+      <div class="saved-report-info">
+        <div class="saved-report-title">${report.title}</div>
+        <div class="saved-report-date">Saved: ${report.formattedDate}</div>
+      </div>
+      <div class="saved-report-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-danger" onclick="deleteSavedReport('${report.id}')" title="Delete Report">
+          <span class="material-icons">delete</span>
+        </button>
+      </div>
+    </div>
+  `
+    )
+    .join("");
+}
+
+function refreshSavedReports() {
+  loadSavedReports();
+  showCustomAlert("Reports list refreshed!", "Success", "success");
+}
+
+function deleteSavedReport(reportId) {
+  showCustomConfirm(
+    "Are you sure you want to delete this report? This cannot be undone.",
+    "Delete Report"
+  ).then((confirmed) => {
+    if (confirmed) {
+      const savedReports = JSON.parse(
+        localStorage.getItem("savedReports") || "[]"
+      );
+      const updatedReports = savedReports.filter(
+        (report) => report.id !== reportId
+      );
+      localStorage.setItem("savedReports", JSON.stringify(updatedReports));
+      loadSavedReports();
+      showCustomAlert("Report deleted successfully!", "Success", "success");
+    }
+  });
+}
+
+function viewSavedReport(reportId) {
+  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+  const report = savedReports.find((r) => r.id === reportId);
+
+  if (!report) {
+    showCustomAlert("Report not found!", "Error", "error");
+    return;
+  }
+
+  // Hide saved reports list and show report viewer
+  document.querySelector(".saved-reports-container").style.display = "none";
+  document.getElementById("report-viewer").style.display = "block";
+
+  // Render the report content
+  renderViewOnlyReport(report.data);
+}
+
+function showSavedReportsList() {
   document.querySelector(".saved-reports-container").style.display = "block";
   document.getElementById("report-viewer").style.display = "none";
 }
 
-// Function to delete a report
-async function deleteReport(reportId) {
-  const confirmed = await showCustomConfirm(
-    "Are you sure you want to delete this report? This action cannot be undone.",
-    "Delete Report"
-  );
-  if (!confirmed) {
-    return;
-  }
-
-  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
-  const filteredReports = savedReports.filter((r) => r.id !== reportId);
-
-  localStorage.setItem("savedReports", JSON.stringify(filteredReports));
-  loadSavedReports(); // Refresh the list
+function backToReportsList() {
+  showSavedReportsList();
 }
 
-// Auto-save every 30 seconds (silent)
-setInterval(() => saveData(false), 30000);
+// Function to render a saved report in view-only mode
+function renderViewOnlyReport(reportData) {
+  const reportContent = document.getElementById("viewed-report-content");
+  reportContent.innerHTML = "";
+  reportContent.className = "viewed-report-content view-only";
+
+  // Create sections based on the saved data structure
+  Object.keys(reportData).forEach((sectionId) => {
+    const sectionData = reportData[sectionId];
+
+    // Create main section
+    const sectionElement = document.createElement("section");
+    sectionElement.className = "main-section";
+    sectionElement.id = `view-${sectionId}`;
+
+    // Section header
+    const sectionHeader = document.createElement("div");
+    sectionHeader.className = "section-header";
+    sectionHeader.innerHTML = `<h2>${
+      sectionData.title || sectionId.toUpperCase()
+    }</h2>`;
+    sectionElement.appendChild(sectionHeader);
+
+    // Section content
+    const sectionContent = document.createElement("div");
+    sectionContent.className = "section-content";
+
+    // Process subsections
+    if (sectionData.subsections) {
+      Object.keys(sectionData.subsections).forEach((subsectionId) => {
+        const subsectionData = sectionData.subsections[subsectionId];
+
+        // Create subsection
+        const subsectionElement = document.createElement("div");
+        subsectionElement.className = "subsection";
+        subsectionElement.id = `view-${subsectionId}`;
+
+        // Subsection header
+        const subsectionHeader = document.createElement("div");
+        subsectionHeader.className = "subsection-header";
+        subsectionHeader.innerHTML = `<h3>${
+          subsectionData.title || subsectionId.toUpperCase().replace("-", " ")
+        }</h3>`;
+        subsectionElement.appendChild(subsectionHeader);
+
+        // Tables container
+        const tablesContainer = document.createElement("div");
+        tablesContainer.className = "tables-container";
+        tablesContainer.id = `view-${subsectionId}-tables`;
+
+        // Process tables
+        if (subsectionData.tables && subsectionData.tables.length > 0) {
+          subsectionData.tables.forEach((tableData, tableIndex) => {
+            const tableWrapper = createViewOnlyTable(
+              subsectionId,
+              tableData,
+              tableIndex
+            );
+            tablesContainer.appendChild(tableWrapper);
+          });
+        }
+
+        subsectionElement.appendChild(tablesContainer);
+        sectionContent.appendChild(subsectionElement);
+      });
+    }
+
+    sectionElement.appendChild(sectionContent);
+    reportContent.appendChild(sectionElement);
+  });
+}
+
+// Function to create view-only table from saved data
+function createViewOnlyTable(subsectionId, tableData, tableIndex) {
+  const tableWrapper = document.createElement("div");
+  tableWrapper.className = "table-wrapper view-only-table";
+  tableWrapper.id = `view-table-${subsectionId}-${tableIndex}`;
+
+  // Determine table type based on subsection
+  const subsectionToTableType = {
+    "wow-performance": "performance-trends",
+    "ab-test": "ab-test-updates",
+    "newly-onboarded": "newly-onboarded-publishers",
+    "in-progress": "in-progress-publishers",
+    nps: "nps-data",
+    "recently-churned": "churned-data",
+    "gave-notice": "notice-data",
+    "publisher-issues": "publisher-updates",
+  };
+
+  const tableType = subsectionToTableType[subsectionId];
+
+  let tableHTML = "";
+
+  if (tableType === "performance-trends") {
+    tableHTML = createViewOnlyPerformanceTrendsTable(tableData);
+  } else if (tableType === "ab-test-updates") {
+    tableHTML = createViewOnlyABTestTable(tableData);
+  } else if (tableType === "newly-onboarded-publishers") {
+    tableHTML = createViewOnlyNewlyOnboardedTable(tableData);
+  } else if (tableType === "in-progress-publishers") {
+    tableHTML = createViewOnlyInProgressTable(tableData);
+  } else if (tableType === "publisher-updates") {
+    tableHTML = createViewOnlyPublisherUpdatesTable(tableData);
+  } else {
+    // Create standard div-based table for other types
+    tableHTML = createViewOnlyStandardTable(tableData, tableType);
+  }
+
+  // Add mobile cards for view-only mode
+  const mobileCards = generateViewOnlyMobileCards(tableData, tableType);
+
+  tableWrapper.innerHTML = tableHTML + mobileCards;
+
+  return tableWrapper;
+}
+
+// Function to create view-only performance trends table
+function createViewOnlyPerformanceTrendsTable(tableData) {
+  if (!tableData.headers || !tableData.rows) return "";
+
+  let tableHTML = `
+    <div class="performance-trends-table view-only">
+      <div class="performance-header">
+        ${tableData.headers
+          .map(
+            (header) => `
+          <div class="performance-header-cell">${header || ""}</div>
+        `
+          )
+          .join("")}
+      </div>
+      <div class="performance-body">
+  `;
+
+  tableData.rows.forEach((row, rowIndex) => {
+    if (row && row.length > 0) {
+      if (
+        rowIndex === 3 &&
+        row[0] &&
+        row[0].toUpperCase().includes("OBSERVATIONS")
+      ) {
+        // Special handling for observations row
+        tableHTML += `
+          <div class="performance-row observations-row">
+            <div class="performance-cell metric-label">${row[0] || ""}</div>
+            <div class="performance-cell observations-cell" colspan="2">${
+              row[1] || ""
+            }</div>
+          </div>
+        `;
+      } else {
+        // Regular metric row
+        tableHTML += `
+          <div class="performance-row">
+            ${row
+              .map(
+                (cell, cellIndex) => `
+              <div class="performance-cell ${
+                cellIndex === 0 ? "metric-label" : "metric-value"
+              }">${cell || ""}</div>
+            `
+              )
+              .join("")}
+          </div>
+        `;
+      }
+    }
+  });
+
+  tableHTML += `
+      </div>
+    </div>
+  `;
+
+  return tableHTML;
+}
+
+// Function to create view-only A/B test table
+function createViewOnlyABTestTable(tableData) {
+  if (!tableData.headers || !tableData.rows) return "";
+
+  // Ensure A/B test data has the complete structure with TIER, % SPLIT, and CSM/OBS
+  const enhancedTableData = ensureABTestStructure(tableData);
+
+  let tableHTML = `
+    <div class="ab-test-table view-only">
+      <div class="ab-test-header">
+        ${enhancedTableData.headers
+          .map(
+            (header) => `
+          <div class="ab-test-header-cell">${header || ""}</div>
+        `
+          )
+          .join("")}
+      </div>
+      <div class="ab-test-body">
+  `;
+
+  enhancedTableData.rows.forEach((row) => {
+    if (row && row.length > 0) {
+      const rowLabel = row[0] ? row[0].trim().toUpperCase() : "";
+
+      // Handle special rows that should span multiple columns
+      if (rowLabel === "STAKEHOLDERS" || rowLabel === "TEST STATUS") {
+        tableHTML += `
+          <div class="ab-test-row ${rowLabel
+            .toLowerCase()
+            .replace(" ", "-")}-row">
+            <div class="ab-test-cell ab-label">${row[0]}</div>
+            <div class="ab-test-cell data-cell spanning-cell">${
+              row[1] || ""
+            }</div>
+          </div>
+        `;
+      } else {
+        // Regular rows - only include cells with content, no empty divs
+        if (rowLabel === "PUBLISHER") {
+          // PUBLISHER row with wider TIER field
+          tableHTML += `
+            <div class="ab-test-row publisher-row view-only">
+              <div class="ab-test-cell ab-label">${row[0] || ""}</div>
+              <div class="ab-test-cell data-cell">${row[1] || ""}</div>
+              <div class="ab-test-cell ab-label">${row[2] || ""}</div>
+              <div class="ab-test-cell data-cell tier-cell-wide">${
+                row[3] || ""
+              }</div>
+            </div>
+          `;
+        } else {
+          // Other regular rows (COMPETITOR, STAGE) - only include the 4 meaningful cells
+          tableHTML += `
+            <div class="ab-test-row view-only">
+              <div class="ab-test-cell ab-label">${row[0] || ""}</div>
+              <div class="ab-test-cell data-cell">${row[1] || ""}</div>
+              <div class="ab-test-cell ab-label">${row[2] || ""}</div>
+              <div class="ab-test-cell data-cell">${row[3] || ""}</div>
+            </div>
+          `;
+        }
+      }
+    }
+  });
+
+  tableHTML += `
+      </div>
+    </div>
+  `;
+
+  return tableHTML;
+}
+
+// Function to create view-only newly onboarded table
+function createViewOnlyNewlyOnboardedTable(tableData) {
+  if (!tableData.headers || !tableData.rows) return "";
+
+  // Ensure newly onboarded data has the complete structure
+  const enhancedTableData = ensureNewlyOnboardedStructure(tableData);
+
+  let tableHTML = `
+    <div class="newly-onboarded-table view-only">
+      <div class="newly-onboarded-body">
+  `;
+
+  enhancedTableData.rows.forEach((row) => {
+    if (row && row.length > 0) {
+      const rowLabel = row[0] ? row[0].trim().toUpperCase() : "";
+
+      // Handle special rows that should span multiple columns
+      if (rowLabel === "DEMAND STATUS") {
+        tableHTML += `
+          <div class="newly-onboarded-row demand-status-row view-only">
+            <div class="newly-onboarded-cell publisher-label">${
+              row[0] || ""
+            }</div>
+            <div class="newly-onboarded-cell data-cell spanning-cell">${
+              row[1] || ""
+            }</div>
+          </div>
+        `;
+      } else {
+        // Regular rows - show all 4 cells with proper labels
+        // Expected structure: PUBLISHER | data | LIVE DATE | data
+        //                    PROJECTED REVENUE | data | OBS | data
+        tableHTML += `
+          <div class="newly-onboarded-row view-only">
+            <div class="newly-onboarded-cell publisher-label">${
+              row[0] || ""
+            }</div>
+            <div class="newly-onboarded-cell data-cell">${row[1] || ""}</div>
+            <div class="newly-onboarded-cell publisher-label">${
+              row[2] || ""
+            }</div>
+            <div class="newly-onboarded-cell data-cell">${row[3] || ""}</div>
+          </div>
+        `;
+      }
+    }
+  });
+
+  tableHTML += `
+      </div>
+    </div>
+  `;
+
+  return tableHTML;
+}
+
+// Function to create view-only in-progress table
+function createViewOnlyInProgressTable(tableData) {
+  if (!tableData.headers || !tableData.rows) return "";
+
+  // Ensure in-progress data has the complete structure
+  const enhancedTableData = ensureInProgressStructure(tableData);
+
+  let tableHTML = `
+    <div class="in-progress-table view-only">
+      <div class="in-progress-body">
+  `;
+
+  enhancedTableData.rows.forEach((row) => {
+    if (row && row.length > 0) {
+      const rowLabel = row[0] ? row[0].trim().toUpperCase() : "";
+
+      // Handle special rows that should span multiple columns
+      if (rowLabel === "STATUS") {
+        tableHTML += `
+          <div class="in-progress-row status-row view-only">
+            <div class="in-progress-cell publisher-label">${row[0] || ""}</div>
+            <div class="in-progress-cell data-cell spanning-cell">${
+              row[1] || ""
+            }</div>
+          </div>
+        `;
+      } else {
+        // Regular rows - show all 4 cells with proper labels
+        // Expected structure: PUBLISHER | data | EXP. LIVE DATE | data
+        //                    STAGE | data | OBS | data
+        //                    PROJECTED REVENUE | data | LAST COMM. DATE | data
+        tableHTML += `
+          <div class="in-progress-row view-only">
+            <div class="in-progress-cell publisher-label">${row[0] || ""}</div>
+            <div class="in-progress-cell data-cell">${row[1] || ""}</div>
+            <div class="in-progress-cell publisher-label">${row[2] || ""}</div>
+            <div class="in-progress-cell data-cell">${row[3] || ""}</div>
+          </div>
+        `;
+      }
+    }
+  });
+
+  tableHTML += `
+      </div>
+    </div>
+  `;
+
+  return tableHTML;
+}
+
+// Function to create view-only publisher updates table
+function createViewOnlyPublisherUpdatesTable(tableData) {
+  if (!tableData.headers || !tableData.rows) return "";
+
+  // Ensure publisher updates data has the complete structure
+  const enhancedTableData = ensurePublisherUpdatesStructure(tableData);
+
+  let tableHTML = `
+    <div class="publisher-updates-table view-only">
+      <div class="publisher-updates-body">
+  `;
+
+  enhancedTableData.rows.forEach((row, index) => {
+    if (row && row.length > 0) {
+      const rowLabel = row[0] ? row[0].trim().toUpperCase() : "";
+
+      // Handle special rows that should span multiple columns
+      if (rowLabel === "ISSUE(S)/ UPDATE(S)" || rowLabel === "NEXT STEPS") {
+        tableHTML += `
+          <div class="publisher-updates-row spanning-row view-only">
+            <div class="publisher-updates-cell publisher-label">${
+              row[0] || ""
+            }</div>
+            <div class="publisher-updates-cell data-cell spanning-cell">${
+              row[1] || ""
+            }</div>
+          </div>
+        `;
+      } else {
+        // Regular rows - show all cells with proper labels
+        // Expected structure: PUBLISHER | data | TIER | data | AVG. MONTHLY REV. | data
+        //                    STAGE | data (spans 3) | CSM | data
+        //                    STAKEHOLDERS | data (spans 3) | LAST COMM. DATE | data
+        if (rowLabel === "STAGE") {
+          // STAGE row: STAGE | data | CSM | data
+          tableHTML += `
+            <div class="publisher-updates-row view-only">
+              <div class="publisher-updates-cell publisher-label">STAGE</div>
+              <div class="publisher-updates-cell data-cell">${
+                row[1] || ""
+              }</div>
+              <div class="publisher-updates-cell publisher-label">CSM</div>
+              <div class="publisher-updates-cell data-cell">${
+                row[4] || ""
+              }</div>
+            </div>
+          `;
+        } else if (rowLabel === "STAKEHOLDERS") {
+          // STAKEHOLDERS row: STAKEHOLDERS | data | LAST COMM. DATE | data
+          tableHTML += `
+            <div class="publisher-updates-row view-only">
+              <div class="publisher-updates-cell publisher-label">STAKEHOLDERS</div>
+              <div class="publisher-updates-cell data-cell">${
+                row[1] || ""
+              }</div>
+              <div class="publisher-updates-cell publisher-label">LAST COMM. DATE</div>
+              <div class="publisher-updates-cell data-cell">${
+                row[4] || ""
+              }</div>
+            </div>
+          `;
+        } else {
+          // Regular 6-column rows (PUBLISHER row)
+          // Structure: PUBLISHER | data | TIER | data | AVG. MONTHLY REV. | data
+          tableHTML += `
+            <div class="publisher-updates-row view-only">
+              <div class="publisher-updates-cell publisher-label">${
+                row[0] || ""
+              }</div>
+              <div class="publisher-updates-cell data-cell">${
+                row[1] || ""
+              }</div>
+              <div class="publisher-updates-cell publisher-label">${
+                row[2] || ""
+              }</div>
+              <div class="publisher-updates-cell data-cell">${
+                row[3] || ""
+              }</div>
+              <div class="publisher-updates-cell publisher-label">${
+                row[4] || ""
+              }</div>
+              <div class="publisher-updates-cell data-cell">${
+                row[5] || ""
+              }</div>
+            </div>
+          `;
+        }
+      }
+    }
+  });
+
+  tableHTML += `
+      </div>
+    </div>
+  `;
+
+  return tableHTML;
+}
+
+// Function to ensure A/B test data has the complete structure
+function ensureABTestStructure(tableData) {
+  // Create a copy of the table data to avoid modifying the original
+  const enhancedData = {
+    headers: [...(tableData.headers || [])],
+    rows: [],
+  };
+
+  // Ensure headers array has 6 elements
+  while (enhancedData.headers.length < 6) {
+    enhancedData.headers.push("");
+  }
+
+  // Note: Expected A/B test structure is defined inline below
+
+  // Process existing rows and merge with expected structure
+  const existingData = {};
+
+  // Extract existing data from saved rows
+  if (tableData.rows) {
+    tableData.rows.forEach((row) => {
+      if (row && row.length > 0 && row[0]) {
+        const label = row[0].trim().toUpperCase();
+        if (label === "PUBLISHER") {
+          existingData.PUBLISHER = row[1] || "";
+          // Check for TIER in position 2 or 3
+          if (
+            row.length > 2 &&
+            row[2] &&
+            row[2].trim().toUpperCase() === "TIER"
+          ) {
+            existingData.TIER = row[3] || "";
+          } else if (row.length > 3) {
+            existingData.TIER = row[3] || "";
+          }
+        } else if (label === "COMPETITOR") {
+          existingData.COMPETITOR = row[1] || "";
+          // Check for % SPLIT in position 2 or 3
+          if (
+            row.length > 2 &&
+            row[2] &&
+            row[2].trim().toUpperCase() === "% SPLIT"
+          ) {
+            existingData["% SPLIT"] = row[3] || "";
+          } else if (row.length > 3) {
+            existingData["% SPLIT"] = row[3] || "";
+          }
+        } else if (label === "STAGE") {
+          existingData.STAGE = row[1] || "";
+          // Check for CSM/OBS in position 2 or 3
+          if (
+            row.length > 2 &&
+            row[2] &&
+            row[2].trim().toUpperCase() === "CSM/OBS"
+          ) {
+            existingData["CSM/OBS"] = row[3] || "";
+          } else if (row.length > 3) {
+            existingData["CSM/OBS"] = row[3] || "";
+          }
+        } else if (label === "STAKEHOLDERS") {
+          existingData.STAKEHOLDERS = row[1] || "";
+        } else if (label === "START DATE") {
+          existingData["START DATE"] = row[1] || "";
+          // Look for END DATE and LAST COMM. DATE in the same row
+          for (let i = 2; i < row.length; i += 2) {
+            if (row[i] && row[i].trim().toUpperCase() === "END DATE") {
+              existingData["END DATE"] = row[i + 1] || "";
+            } else if (
+              row[i] &&
+              row[i].trim().toUpperCase() === "LAST COMM. DATE"
+            ) {
+              existingData["LAST COMM. DATE"] = row[i + 1] || "";
+            }
+          }
+        } else if (label === "TEST STATUS") {
+          existingData["TEST STATUS"] = row[1] || "";
+        } else if (label === "TIER") {
+          // Handle case where TIER is a separate row
+          existingData.TIER = row[1] || "";
+        } else if (label === "% SPLIT") {
+          // Handle case where % SPLIT is a separate row
+          existingData["% SPLIT"] = row[1] || "";
+        } else if (label === "CSM/OBS") {
+          // Handle case where CSM/OBS is a separate row
+          existingData["CSM/OBS"] = row[1] || "";
+        } else if (label === "END DATE") {
+          // Handle case where END DATE is a separate row
+          existingData["END DATE"] = row[1] || "";
+        } else if (label === "LAST COMM. DATE") {
+          // Handle case where LAST COMM. DATE is a separate row
+          existingData["LAST COMM. DATE"] = row[1] || "";
+        }
+      }
+    });
+  }
+
+  // Build enhanced rows with complete structure
+  enhancedData.rows = [
+    [
+      "PUBLISHER",
+      existingData.PUBLISHER || "",
+      "TIER",
+      existingData.TIER || "",
+      "",
+      "",
+    ],
+    [
+      "COMPETITOR",
+      existingData.COMPETITOR || "",
+      "% SPLIT",
+      existingData["% SPLIT"] || "",
+      "",
+      "",
+    ],
+    [
+      "STAGE",
+      existingData.STAGE || "",
+      "CSM/OBS",
+      existingData["CSM/OBS"] || "",
+      "",
+      "",
+    ],
+    ["STAKEHOLDERS", existingData.STAKEHOLDERS || "", "", "", "", ""],
+    [
+      "START DATE",
+      existingData["START DATE"] || "",
+      "END DATE",
+      existingData["END DATE"] || "",
+      "LAST COMM. DATE",
+      existingData["LAST COMM. DATE"] || "",
+    ],
+    ["TEST STATUS", existingData["TEST STATUS"] || "", "", "", "", ""],
+  ];
+
+  return enhancedData;
+}
+
+// Function to ensure newly onboarded data has the complete structure
+function ensureNewlyOnboardedStructure(tableData) {
+  // Create a copy of the table data to avoid modifying the original
+  const enhancedData = {
+    headers: [...(tableData.headers || [])],
+    rows: [],
+  };
+
+  // Ensure headers array has 4 elements
+  while (enhancedData.headers.length < 4) {
+    enhancedData.headers.push("");
+  }
+
+  // Process existing rows and merge with expected structure
+  const existingData = {};
+
+  // Extract existing data from saved rows
+  if (tableData.rows) {
+    tableData.rows.forEach((row) => {
+      if (row && row.length > 0 && row[0]) {
+        const label = row[0].trim().toUpperCase();
+        if (label === "PUBLISHER") {
+          existingData.PUBLISHER = row[1] || "";
+          // Check for LIVE DATE in position 2 or 3
+          if (
+            row.length > 2 &&
+            row[2] &&
+            row[2].trim().toUpperCase() === "LIVE DATE"
+          ) {
+            existingData["LIVE DATE"] = row[3] || "";
+          } else if (row.length > 3) {
+            existingData["LIVE DATE"] = row[3] || "";
+          }
+        } else if (label === "PROJECTED REVENUE") {
+          existingData["PROJECTED REVENUE"] = row[1] || "";
+          // Check for OBS in position 2 or 3
+          if (
+            row.length > 2 &&
+            row[2] &&
+            row[2].trim().toUpperCase() === "OBS"
+          ) {
+            existingData.OBS = row[3] || "";
+          } else if (row.length > 3) {
+            existingData.OBS = row[3] || "";
+          }
+        } else if (label === "DEMAND STATUS") {
+          existingData["DEMAND STATUS"] = row[1] || "";
+        } else if (label === "LIVE DATE") {
+          // Handle case where LIVE DATE is a separate row
+          existingData["LIVE DATE"] = row[1] || "";
+        } else if (label === "OBS") {
+          // Handle case where OBS is a separate row
+          existingData.OBS = row[1] || "";
+        }
+      }
+    });
+  }
+
+  // Build enhanced rows with complete structure
+  enhancedData.rows = [
+    [
+      "PUBLISHER",
+      existingData.PUBLISHER || "",
+      "LIVE DATE",
+      existingData["LIVE DATE"] || "",
+    ],
+    [
+      "PROJECTED REVENUE",
+      existingData["PROJECTED REVENUE"] || "",
+      "OBS",
+      existingData.OBS || "",
+    ],
+    ["DEMAND STATUS", existingData["DEMAND STATUS"] || "", "", ""],
+  ];
+
+  return enhancedData;
+}
+
+// Function to ensure in-progress data has the complete structure
+function ensureInProgressStructure(tableData) {
+  // Create a copy of the table data to avoid modifying the original
+  const enhancedData = {
+    headers: [...(tableData.headers || [])],
+    rows: [],
+  };
+
+  // Ensure headers array has 4 elements
+  while (enhancedData.headers.length < 4) {
+    enhancedData.headers.push("");
+  }
+
+  // Process existing rows and merge with expected structure
+  const existingData = {};
+
+  // Extract existing data from saved rows
+  if (tableData.rows) {
+    tableData.rows.forEach((row) => {
+      if (row && row.length > 0 && row[0]) {
+        const label = row[0].trim().toUpperCase();
+        if (label === "PUBLISHER") {
+          existingData.PUBLISHER = row[1] || "";
+          // Check for EXP. LIVE DATE in position 2 or 3
+          if (
+            row.length > 2 &&
+            row[2] &&
+            row[2].trim().toUpperCase() === "EXP. LIVE DATE"
+          ) {
+            existingData["EXP. LIVE DATE"] = row[3] || "";
+          } else if (row.length > 3) {
+            existingData["EXP. LIVE DATE"] = row[3] || "";
+          }
+        } else if (label === "STAGE") {
+          existingData.STAGE = row[1] || "";
+          // Check for OBS in position 2 or 3
+          if (
+            row.length > 2 &&
+            row[2] &&
+            row[2].trim().toUpperCase() === "OBS"
+          ) {
+            existingData.OBS = row[3] || "";
+          } else if (row.length > 3) {
+            existingData.OBS = row[3] || "";
+          }
+        } else if (label === "PROJECTED REVENUE") {
+          existingData["PROJECTED REVENUE"] = row[1] || "";
+          // Check for LAST COMM. DATE in position 2 or 3
+          if (
+            row.length > 2 &&
+            row[2] &&
+            row[2].trim().toUpperCase() === "LAST COMM. DATE"
+          ) {
+            existingData["LAST COMM. DATE"] = row[3] || "";
+          } else if (row.length > 3) {
+            existingData["LAST COMM. DATE"] = row[3] || "";
+          }
+        } else if (label === "STATUS") {
+          existingData.STATUS = row[1] || "";
+        } else if (label === "EXP. LIVE DATE") {
+          // Handle case where EXP. LIVE DATE is a separate row
+          existingData["EXP. LIVE DATE"] = row[1] || "";
+        } else if (label === "OBS") {
+          // Handle case where OBS is a separate row
+          existingData.OBS = row[1] || "";
+        } else if (label === "LAST COMM. DATE") {
+          // Handle case where LAST COMM. DATE is a separate row
+          existingData["LAST COMM. DATE"] = row[1] || "";
+        }
+      }
+    });
+  }
+
+  // Build enhanced rows with complete structure
+  enhancedData.rows = [
+    [
+      "PUBLISHER",
+      existingData.PUBLISHER || "",
+      "EXP. LIVE DATE",
+      existingData["EXP. LIVE DATE"] || "",
+    ],
+    ["STAGE", existingData.STAGE || "", "OBS", existingData.OBS || ""],
+    [
+      "PROJECTED REVENUE",
+      existingData["PROJECTED REVENUE"] || "",
+      "LAST COMM. DATE",
+      existingData["LAST COMM. DATE"] || "",
+    ],
+    ["STATUS", existingData.STATUS || "", "", ""],
+  ];
+
+  return enhancedData;
+}
+
+// Function to ensure publisher updates data has the complete structure
+function ensurePublisherUpdatesStructure(tableData) {
+  // If the data already has the correct structure, just return it
+  if (tableData.rows && tableData.rows.length > 0) {
+    return tableData;
+  }
+
+  // Start with the template structure
+  const template = tableTemplates["publisher-updates"];
+
+  // Create enhanced data starting with template
+  const enhancedData = {
+    headers: [...template.headers],
+    rows: JSON.parse(JSON.stringify(template.defaultRows)), // Deep copy
+  };
+
+  // Process existing rows and populate the template structure
+  const existingData = {};
+
+  // Extract existing data from saved rows
+  if (tableData.rows) {
+    tableData.rows.forEach((row) => {
+      if (row && row.length > 0 && row[0]) {
+        const label = row[0].trim().toUpperCase();
+        if (label === "PUBLISHER") {
+          existingData.PUBLISHER = row[1] || "";
+          // Check for TIER in any position after PUBLISHER data
+          for (let i = 2; i < row.length; i++) {
+            if (
+              row[i] &&
+              row[i].trim().toUpperCase() === "TIER" &&
+              i + 1 < row.length
+            ) {
+              existingData.TIER = row[i + 1] || "";
+              break;
+            }
+          }
+          // Check for AVG. MONTHLY REV. in any position
+          for (let i = 2; i < row.length; i++) {
+            if (
+              row[i] &&
+              row[i].trim().toUpperCase() === "AVG. MONTHLY REV." &&
+              i + 1 < row.length
+            ) {
+              existingData["AVG. MONTHLY REV."] = row[i + 1] || "";
+              break;
+            }
+          }
+        } else if (label === "STAGE") {
+          existingData.STAGE = row[1] || "";
+          // Check for CSM in any position after STAGE data
+          for (let i = 2; i < row.length; i++) {
+            if (
+              row[i] &&
+              row[i].trim().toUpperCase() === "CSM" &&
+              i + 1 < row.length
+            ) {
+              existingData.CSM = row[i + 1] || "";
+              break;
+            }
+          }
+        } else if (label === "STAKEHOLDERS") {
+          existingData.STAKEHOLDERS = row[1] || "";
+          // Check for LAST COMM. DATE in any position after STAKEHOLDERS data
+          for (let i = 2; i < row.length; i++) {
+            if (
+              row[i] &&
+              row[i].trim().toUpperCase() === "LAST COMM. DATE" &&
+              i + 1 < row.length
+            ) {
+              existingData["LAST COMM. DATE"] = row[i + 1] || "";
+              break;
+            }
+          }
+        } else if (
+          label === "ISSUE(S)/ UPDATE(S)" ||
+          label === "ISSUE(S)/UPDATE(S)"
+        ) {
+          existingData["ISSUE(S)/ UPDATE(S)"] = row[1] || "";
+        } else if (label === "NEXT STEPS") {
+          existingData["NEXT STEPS"] = row[1] || "";
+        } else if (label === "TIER") {
+          // Handle case where TIER is a separate row
+          existingData.TIER = row[1] || "";
+        } else if (label === "AVG. MONTHLY REV.") {
+          // Handle case where AVG. MONTHLY REV. is a separate row
+          existingData["AVG. MONTHLY REV."] = row[1] || "";
+        } else if (label === "CSM") {
+          // Handle case where CSM is a separate row
+          existingData.CSM = row[1] || "";
+        } else if (label === "LAST COMM. DATE") {
+          // Handle case where LAST COMM. DATE is a separate row
+          existingData["LAST COMM. DATE"] = row[1] || "";
+        }
+      }
+    });
+  }
+
+  // Populate the template structure with extracted data
+  // Row 0: PUBLISHER row
+  if (enhancedData.rows[0]) {
+    // Position 1: PUBLISHER data
+    enhancedData.rows[0][1] =
+      existingData.PUBLISHER || enhancedData.rows[0][1] || "";
+    // Position 2: TIER label (keep as "TIER")
+    enhancedData.rows[0][2] = "TIER";
+    // Position 3: TIER data
+    enhancedData.rows[0][3] =
+      existingData.TIER || enhancedData.rows[0][3] || "";
+    // Position 4: AVG. MONTHLY REV. label (keep as is)
+    enhancedData.rows[0][4] = "AVG. MONTHLY REV.";
+    // Position 5: AVG. MONTHLY REV. data
+    enhancedData.rows[0][5] =
+      existingData["AVG. MONTHLY REV."] || enhancedData.rows[0][5] || "";
+  }
+
+  // Row 1: STAGE row
+  if (enhancedData.rows[1]) {
+    // Position 0: STAGE label (keep as "STAGE")
+    enhancedData.rows[1][0] = "STAGE";
+    // Position 1: STAGE data
+    enhancedData.rows[1][1] =
+      existingData.STAGE || enhancedData.rows[1][1] || "";
+    // Position 3: CSM label (keep as "CSM")
+    enhancedData.rows[1][3] = "CSM";
+    // Position 4: CSM data
+    enhancedData.rows[1][4] = existingData.CSM || enhancedData.rows[1][4] || "";
+  }
+
+  // Row 2: STAKEHOLDERS row
+  if (enhancedData.rows[2]) {
+    // Position 0: STAKEHOLDERS label (keep as "STAKEHOLDERS")
+    enhancedData.rows[2][0] = "STAKEHOLDERS";
+    // Position 1: STAKEHOLDERS data
+    enhancedData.rows[2][1] =
+      existingData.STAKEHOLDERS || enhancedData.rows[2][1] || "";
+    // Position 3: LAST COMM. DATE label (keep as "LAST COMM. DATE")
+    enhancedData.rows[2][3] = "LAST COMM. DATE";
+    // Position 4: LAST COMM. DATE data
+    enhancedData.rows[2][4] =
+      existingData["LAST COMM. DATE"] || enhancedData.rows[2][4] || "";
+  }
+
+  // Row 3: ISSUE(S)/ UPDATE(S) row
+  if (enhancedData.rows[3]) {
+    // Position 0: ISSUE(S)/ UPDATE(S) label (keep as is)
+    enhancedData.rows[3][0] = "ISSUE(S)/ UPDATE(S)";
+    // Position 1: ISSUE(S)/ UPDATE(S) data
+    enhancedData.rows[3][1] =
+      existingData["ISSUE(S)/ UPDATE(S)"] || enhancedData.rows[3][1] || "";
+  }
+
+  // Row 4: NEXT STEPS row
+  if (enhancedData.rows[4]) {
+    // Position 0: NEXT STEPS label (keep as is)
+    enhancedData.rows[4][0] = "NEXT STEPS";
+    // Position 1: NEXT STEPS data
+    enhancedData.rows[4][1] =
+      existingData["NEXT STEPS"] || enhancedData.rows[4][1] || "";
+  }
+
+  return enhancedData;
+}
+
+// Function to create view-only standard table
+function createViewOnlyStandardTable(tableData, tableType) {
+  if (!tableData.headers || !tableData.rows) return "";
+
+  let tableHTML = `
+    <div class="data-table-div view-only ${tableType}-table">
+      <div class="table-header">
+        ${tableData.headers
+          .map(
+            (header) => `
+          <div class="header-cell">${header || ""}</div>
+        `
+          )
+          .join("")}
+      </div>
+      <div class="table-body">
+  `;
+
+  tableData.rows.forEach((row) => {
+    if (row && row.length > 0) {
+      tableHTML += `
+        <div class="table-row">
+          ${row
+            .map(
+              (cell, cellIndex) => `
+            <div class="table-cell ${
+              cellIndex === 0 ? "label-cell" : "data-cell"
+            }">${cell || ""}</div>
+          `
+            )
+            .join("")}
+        </div>
+      `;
+    }
+  });
+
+  tableHTML += `
+      </div>
+    </div>
+  `;
+
+  return tableHTML;
+}
+
+// Function to generate view-only mobile cards
+function generateViewOnlyMobileCards(tableData, tableType) {
+  if (!tableData.headers || !tableData.rows) return "";
+
+  let mobileHTML = "";
+
+  if (tableType === "performance-trends") {
+    mobileHTML = generateViewOnlyPerformanceTrendsCard(tableData);
+  } else if (tableType === "ab-test-updates") {
+    mobileHTML = generateViewOnlyABTestCard(tableData);
+  } else if (tableType === "newly-onboarded-publishers") {
+    mobileHTML = generateViewOnlyNewlyOnboardedCard(tableData);
+  } else if (tableType === "in-progress-publishers") {
+    mobileHTML = generateViewOnlyInProgressCard(tableData);
+  } else if (tableType === "publisher-updates") {
+    mobileHTML = generateViewOnlyPublisherUpdatesCard(tableData);
+  } else if (tableType === "nps-data") {
+    mobileHTML = generateViewOnlyNPSCard(tableData);
+  } else if (tableType === "churned-data" || tableType === "notice-data") {
+    mobileHTML = generateViewOnlyChurnedCard(tableData);
+  } else {
+    // Default card layout for other table types
+    mobileHTML = generateViewOnlyDefaultCard(tableData);
+  }
+
+  return mobileHTML;
+}
+
+// Generate view-only performance trends card
+function generateViewOnlyPerformanceTrendsCard(tableData) {
+  let mobileHTML = `<div class="mobile-table-card view-only">`;
+
+  // Add date headers
+  mobileHTML += `<div class="mobile-table-header">Performance Trends</div>`;
+  mobileHTML += `<div class="mobile-date-headers">`;
+  mobileHTML += `<div class="mobile-date-header prior">${
+    tableData.headers[1] || ""
+  }</div>`;
+  mobileHTML += `<div class="mobile-date-header recent">${
+    tableData.headers[2] || ""
+  }</div>`;
+  mobileHTML += `</div>`;
+
+  mobileHTML += `<div class="mobile-table-content">`;
+
+  // Process each metric row
+  tableData.rows.forEach((row, index) => {
+    if (row[0] && row[0].trim() !== "") {
+      if (index === 3 && row[0].toUpperCase().includes("OBSERVATIONS")) {
+        // Special handling for observations row
+        mobileHTML += `<div class="observations-row">`;
+        mobileHTML += `<div class="mobile-row-label">${row[0]}</div>`;
+        mobileHTML += `<div class="mobile-row-data observations">${
+          row[1] || ""
+        }</div>`;
+        mobileHTML += `</div>`;
+      } else {
+        // Regular metric row with two values
+        mobileHTML += `<div class="mobile-metric-row">`;
+        mobileHTML += `<div class="mobile-row-label">${row[0]}</div>`;
+        mobileHTML += `<div class="mobile-metric-values">`;
+        mobileHTML += `<div class="mobile-metric-value prior">${
+          row[1] || ""
+        }</div>`;
+        mobileHTML += `<div class="mobile-metric-value recent">${
+          row[2] || ""
+        }</div>`;
+        mobileHTML += `</div>`;
+        mobileHTML += `</div>`;
+      }
+    }
+  });
+
+  mobileHTML += `</div>`;
+  mobileHTML += `</div>`;
+
+  return mobileHTML;
+}
+
+// Generate view-only A/B test card
+function generateViewOnlyABTestCard(tableData) {
+  let mobileHTML = `<div class="mobile-table-card view-only">`;
+  mobileHTML += `<div class="mobile-table-content">`;
+
+  // Ensure A/B test data has the complete structure with TIER, % SPLIT, and CSM/OBS
+  const enhancedTableData = ensureABTestStructure(tableData);
+
+  // Process A/B test data structure with proper 6-column layout
+  // Expected structure: PUBLISHER | value | TIER | value | |
+  //                    COMPETITOR | value | % SPLIT | value | |
+  //                    STAGE | value | CSM/OBS | value | |
+  //                    STAKEHOLDERS | value | | | |
+  //                    START DATE | value | END DATE | value | LAST COMM. DATE | value
+  //                    TEST STATUS | value | | | |
+
+  enhancedTableData.rows.forEach((row) => {
+    if (row && row.length > 0 && row[0] && row[0].trim() !== "") {
+      // First column pair (positions 0,1)
+      mobileHTML += `<div class="mobile-row">`;
+      mobileHTML += `<div class="mobile-row-label">${row[0]}</div>`;
+      mobileHTML += `<div class="mobile-row-data">${row[1] || ""}</div>`;
+      mobileHTML += `</div>`;
+
+      // Second column pair (positions 2,3) - TIER, % SPLIT, CSM/OBS
+      if (row[2] && row[2].trim() !== "") {
+        mobileHTML += `<div class="mobile-row">`;
+        mobileHTML += `<div class="mobile-row-label">${row[2]}</div>`;
+        mobileHTML += `<div class="mobile-row-data">${row[3] || ""}</div>`;
+        mobileHTML += `</div>`;
+      }
+
+      // Third column pair (positions 4,5) - for START DATE row: LAST COMM. DATE
+      if (row[4] && row[4].trim() !== "") {
+        mobileHTML += `<div class="mobile-row">`;
+        mobileHTML += `<div class="mobile-row-label">${row[4]}</div>`;
+        mobileHTML += `<div class="mobile-row-data">${row[5] || ""}</div>`;
+        mobileHTML += `</div>`;
+      }
+    }
+  });
+
+  mobileHTML += `</div>`;
+  mobileHTML += `</div>`;
+
+  return mobileHTML;
+}
+
+// Generate view-only default card for simple tables
+function generateViewOnlyDefaultCard(tableData) {
+  let mobileHTML = `<div class="mobile-table-card view-only">`;
+  mobileHTML += `<div class="mobile-table-content">`;
+
+  tableData.rows.forEach((row) => {
+    if (row && row.length >= 2 && row[0] && row[0].trim() !== "") {
+      mobileHTML += `<div class="mobile-row">`;
+      mobileHTML += `<div class="mobile-row-label">${row[0]}</div>`;
+      mobileHTML += `<div class="mobile-row-data">${row[1] || ""}</div>`;
+      mobileHTML += `</div>`;
+    }
+  });
+
+  mobileHTML += `</div>`;
+  mobileHTML += `</div>`;
+
+  return mobileHTML;
+}
+
+// Generate view-only newly onboarded card
+function generateViewOnlyNewlyOnboardedCard(tableData) {
+  let mobileHTML = `<div class="mobile-table-card view-only">`;
+  mobileHTML += `<div class="mobile-table-content">`;
+
+  tableData.rows.forEach((row) => {
+    if (row && row.length > 0 && row[0] && row[0].trim() !== "") {
+      mobileHTML += `<div class="mobile-row">`;
+      mobileHTML += `<div class="mobile-row-label">${row[0]}</div>`;
+      mobileHTML += `<div class="mobile-row-data">${row[1] || ""}</div>`;
+      mobileHTML += `</div>`;
+
+      if (row[2] && row[2].trim() !== "") {
+        mobileHTML += `<div class="mobile-row">`;
+        mobileHTML += `<div class="mobile-row-label">${row[2]}</div>`;
+        mobileHTML += `<div class="mobile-row-data">${row[3] || ""}</div>`;
+        mobileHTML += `</div>`;
+      }
+    }
+  });
+
+  mobileHTML += `</div>`;
+  mobileHTML += `</div>`;
+
+  return mobileHTML;
+}
+
+// Generate view-only in-progress card
+function generateViewOnlyInProgressCard(tableData) {
+  let mobileHTML = `<div class="mobile-table-card view-only">`;
+  mobileHTML += `<div class="mobile-table-content">`;
+
+  tableData.rows.forEach((row) => {
+    if (row && row.length > 0 && row[0] && row[0].trim() !== "") {
+      mobileHTML += `<div class="mobile-row">`;
+      mobileHTML += `<div class="mobile-row-label">${row[0]}</div>`;
+      mobileHTML += `<div class="mobile-row-data">${row[1] || ""}</div>`;
+      mobileHTML += `</div>`;
+
+      if (row[2] && row[2].trim() !== "") {
+        mobileHTML += `<div class="mobile-row">`;
+        mobileHTML += `<div class="mobile-row-label">${row[2]}</div>`;
+        mobileHTML += `<div class="mobile-row-data">${row[3] || ""}</div>`;
+        mobileHTML += `</div>`;
+      }
+    }
+  });
+
+  mobileHTML += `</div>`;
+  mobileHTML += `</div>`;
+
+  return mobileHTML;
+}
+
+// Generate view-only publisher updates card
+function generateViewOnlyPublisherUpdatesCard(tableData) {
+  let mobileHTML = `<div class="mobile-table-card view-only">`;
+  mobileHTML += `<div class="mobile-table-content">`;
+
+  // Expected fields: PUBLISHER, TIER, AVG. MONTHLY REV, STAGE, CSM, STAKEHOLDERS, LAST COMM. DATE, ISSUE(S)/UPDATE(S), NEXT STEPS
+  const fieldLabels = [
+    "PUBLISHER",
+    "TIER",
+    "AVG. MONTHLY REV",
+    "STAGE",
+    "CSM",
+    "STAKEHOLDERS",
+    "LAST COMM. DATE",
+    "ISSUE(S)/UPDATE(S)",
+    "NEXT STEPS",
+  ];
+
+  tableData.rows.forEach((row) => {
+    if (row && row.length > 0) {
+      row.forEach((cell, index) => {
+        if (cell && cell.trim() !== "" && fieldLabels[index]) {
+          mobileHTML += `<div class="mobile-row">`;
+          mobileHTML += `<div class="mobile-row-label">${fieldLabels[index]}</div>`;
+          mobileHTML += `<div class="mobile-row-data">${cell}</div>`;
+          mobileHTML += `</div>`;
+        }
+      });
+    }
+  });
+
+  mobileHTML += `</div>`;
+  mobileHTML += `</div>`;
+
+  return mobileHTML;
+}
+
+// Generate view-only NPS card
+function generateViewOnlyNPSCard(tableData) {
+  let mobileHTML = `<div class="mobile-table-card view-only">`;
+  mobileHTML += `<div class="mobile-table-header">Net Promoter Score (NPS)</div>`;
+  mobileHTML += `<div class="mobile-table-content">`;
+
+  tableData.rows.forEach((row) => {
+    if (row && row.length > 0 && row[0] && row[0].trim() !== "") {
+      mobileHTML += `<div class="mobile-nps-row">`;
+      mobileHTML += `<div class="mobile-row-label">${row[0]}</div>`;
+      mobileHTML += `<div class="mobile-nps-scores">`;
+      mobileHTML += `<div class="mobile-nps-score"><span class="score-label">MTD:</span> ${
+        row[1] || ""
+      }</div>`;
+      mobileHTML += `<div class="mobile-nps-score"><span class="score-label">QTD:</span> ${
+        row[2] || ""
+      }</div>`;
+      mobileHTML += `<div class="mobile-nps-score"><span class="score-label">YTD:</span> ${
+        row[3] || ""
+      }</div>`;
+      mobileHTML += `</div>`;
+      mobileHTML += `</div>`;
+    }
+  });
+
+  mobileHTML += `</div>`;
+  mobileHTML += `</div>`;
+
+  return mobileHTML;
+}
+
+// Generate view-only churned card
+function generateViewOnlyChurnedCard(tableData) {
+  let mobileHTML = `<div class="mobile-table-card view-only">`;
+  mobileHTML += `<div class="mobile-table-content">`;
+
+  tableData.rows.forEach((row) => {
+    if (row && row.length > 0 && row[0] && row[0].trim() !== "") {
+      mobileHTML += `<div class="mobile-churned-item">`;
+      mobileHTML += `<div class="mobile-row">`;
+      mobileHTML += `<div class="mobile-row-label">PUBLISHER</div>`;
+      mobileHTML += `<div class="mobile-row-data">${row[0] || ""}</div>`;
+      mobileHTML += `</div>`;
+
+      if (row[1]) {
+        mobileHTML += `<div class="mobile-row">`;
+        mobileHTML += `<div class="mobile-row-label">SITE(S)</div>`;
+        mobileHTML += `<div class="mobile-row-data">${row[1]}</div>`;
+        mobileHTML += `</div>`;
+      }
+
+      if (row[2]) {
+        mobileHTML += `<div class="mobile-row">`;
+        mobileHTML += `<div class="mobile-row-label">AVG. MONTHLY REV.</div>`;
+        mobileHTML += `<div class="mobile-row-data">${row[2]}</div>`;
+        mobileHTML += `</div>`;
+      }
+
+      if (row[3]) {
+        mobileHTML += `<div class="mobile-row">`;
+        mobileHTML += `<div class="mobile-row-label">DARK DATE & REASON</div>`;
+        mobileHTML += `<div class="mobile-row-data">${row[3]}</div>`;
+        mobileHTML += `</div>`;
+      }
+
+      mobileHTML += `</div>`;
+    }
+  });
+
+  mobileHTML += `</div>`;
+  mobileHTML += `</div>`;
+
+  return mobileHTML;
+}
 
 // Custom Modal Functions
 function showCustomAlert(message, title = "Information", icon = "info") {
@@ -3396,4 +5861,319 @@ function showCustomConfirm(message, title = "Confirmation") {
     };
     document.addEventListener("keydown", handleEscape);
   });
+}
+
+// Function to add a row to NPS or churned data tables
+function addRowToTable(button) {
+  console.log("addRowToTable called");
+  const tableWrapper = button.closest(".table-wrapper");
+
+  // Check if this is a div-based table
+  const npsTable = tableWrapper.querySelector(".nps-table");
+  const churnedTable = tableWrapper.querySelector(".churned-table");
+
+  if (npsTable) {
+    // Handle div-based NPS table
+    addRowToNPSDiv(button, npsTable);
+    return;
+  }
+
+  if (churnedTable) {
+    // Handle div-based churned table
+    addRowToChurnedDiv(button, churnedTable);
+    return;
+  }
+
+  // Handle traditional HTML tables
+  const table = button.closest("table");
+  const tbody = table.querySelector("tbody");
+  const tableId = tableWrapper.id;
+
+  // Determine table type based on classes
+  const isNpsTable = table.querySelector(".nps-label") !== null;
+  const isChurnedTable = table.querySelector(".churned-publisher") !== null;
+
+  console.log("isNpsTable:", isNpsTable);
+
+  // Get the row that contains the clicked button
+  const clickedRow = button.closest("tr");
+  console.log("clickedRow:", clickedRow);
+
+  // Create new row
+  const newRow = document.createElement("tr");
+
+  if (isNpsTable) {
+    // Get the label from the clicked row to determine if it's NETWORK or T1
+    const clickedLabel = clickedRow
+      .querySelector(".nps-label")
+      .textContent.trim();
+
+    console.log("clickedLabel:", clickedLabel);
+
+    newRow.className = "nps-added-row";
+    newRow.innerHTML = `
+      <td class="nps-label">${clickedLabel}</td>
+      <td contenteditable="true" class="nps-score"></td>
+      <td contenteditable="true" class="nps-score"></td>
+      <td contenteditable="true" class="nps-score"></td>
+      <td class="row-actions">
+        <button class="remove-row-btn" onclick="removeRowFromTable(this)" title="Remove row"><span class="material-icons">remove</span></button>
+      </td>
+    `;
+
+    // Insert the new row directly after the clicked row
+    clickedRow.insertAdjacentElement("afterend", newRow);
+    console.log("New row inserted");
+  } else if (isChurnedTable) {
+    newRow.className = "churned-added-row";
+    newRow.innerHTML = `
+      <td contenteditable="true" class="churned-publisher"></td>
+      <td contenteditable="true" class="churned-site"></td>
+      <td contenteditable="true" class="churned-revenue"></td>
+      <td contenteditable="true" class="churned-reason"></td>
+      <td class="row-actions">
+        <button class="remove-row-btn" onclick="removeRowFromTable(this)" title="Remove row"><span class="material-icons">remove</span></button>
+      </td>
+    `;
+
+    // For churned table, add at the end
+    tbody.appendChild(newRow);
+    console.log("New churned row added");
+  }
+
+  // Add event listeners to new editable cells
+  const editableCells = newRow.querySelectorAll('td[contenteditable="true"]');
+  editableCells.forEach((cell) => {
+    addCellEventListeners(cell);
+  });
+
+  // Trigger auto-save
+  triggerAutoSave();
+}
+
+// Function to add a row to div-based NPS table
+function addRowToNPSDiv(button, npsTable) {
+  console.log("addRowToNPSDiv called");
+
+  // Get the row that contains the clicked button
+  const clickedRow = button.closest(".nps-row");
+  console.log("clickedRow:", clickedRow);
+
+  // Get the label from the clicked row to determine if it's NETWORK or T1
+  const clickedLabel = clickedRow
+    .querySelector(".nps-label")
+    .textContent.trim();
+  console.log("clickedLabel:", clickedLabel);
+
+  // Create new div row
+  const newRow = document.createElement("div");
+  newRow.className = "nps-row nps-added-row";
+  newRow.innerHTML = `
+    <div class="nps-label">${clickedLabel}</div>
+    <div contenteditable="true" class="nps-score"></div>
+    <div contenteditable="true" class="nps-score"></div>
+    <div contenteditable="true" class="nps-score"></div>
+    <div class="row-actions">
+      <button class="remove-row-btn" onclick="removeRowFromNPSDiv(this)" title="Remove row"><span class="material-icons">remove</span></button>
+    </div>
+  `;
+
+  // Insert the new row directly after the clicked row
+  clickedRow.insertAdjacentElement("afterend", newRow);
+  console.log("New NPS div row inserted");
+
+  // Add event listeners to new editable cells
+  const editableCells = newRow.querySelectorAll('div[contenteditable="true"]');
+  editableCells.forEach((cell) => {
+    addCellEventListeners(cell);
+  });
+
+  // Trigger auto-save
+  triggerAutoSave();
+}
+
+// Function to add a row to div-based churned table
+function addRowToChurnedDiv(button, churnedTable) {
+  console.log("addRowToChurnedDiv called");
+
+  // Get the churned body to append the new row
+  const churnedBody = churnedTable.querySelector(".churned-body");
+
+  // Create new div row
+  const newRow = document.createElement("div");
+  newRow.className = "churned-row churned-added-row";
+  newRow.innerHTML = `
+    <div contenteditable="true" class="churned-publisher"></div>
+    <div contenteditable="true" class="churned-site"></div>
+    <div contenteditable="true" class="churned-revenue"></div>
+    <div contenteditable="true" class="churned-reason"></div>
+    <div class="row-actions">
+      <button class="remove-row-btn" onclick="removeRowFromChurnedDiv(this)" title="Remove row"><span class="material-icons">remove</span></button>
+    </div>
+  `;
+
+  // Add the new row at the end
+  churnedBody.appendChild(newRow);
+  console.log("New churned div row added");
+
+  // Add event listeners to new editable cells
+  const editableCells = newRow.querySelectorAll('div[contenteditable="true"]');
+  editableCells.forEach((cell) => {
+    addCellEventListeners(cell);
+  });
+
+  // Trigger auto-save
+  triggerAutoSave();
+}
+
+// Function to remove a row from div-based NPS table
+async function removeRowFromNPSDiv(button) {
+  console.log("removeRowFromNPSDiv called");
+
+  const row = button.closest(".nps-row");
+
+  // Don't allow removing default rows (NETWORK and T1)
+  if (row.classList.contains("nps-default-row")) {
+    await showCustomAlert(
+      "Cannot remove default rows (NETWORK and T1). Only added rows can be removed.",
+      "Cannot Remove Row",
+      "warning"
+    );
+    return;
+  }
+
+  // Remove the row
+  row.remove();
+  console.log("NPS div row removed");
+
+  // Trigger auto-save
+  triggerAutoSave();
+}
+
+// Function to remove a row from div-based churned table
+async function removeRowFromChurnedDiv(button) {
+  console.log("removeRowFromChurnedDiv called");
+
+  const row = button.closest(".churned-row");
+
+  // Don't allow removing default rows
+  if (row.classList.contains("churned-default-row")) {
+    await showCustomAlert(
+      "Cannot remove the default row. Only added rows can be removed.",
+      "Cannot Remove Row",
+      "warning"
+    );
+    return;
+  }
+
+  // Remove the row
+  row.remove();
+  console.log("Churned div row removed");
+
+  // Trigger auto-save
+  triggerAutoSave();
+}
+
+// Function to remove a row from NPS or churned data tables
+async function removeRowFromTable(button) {
+  const table = button.closest("table");
+  const tbody = table.querySelector("tbody");
+  const row = button.closest("tr");
+
+  // Determine table type
+  const isNpsTable = table.querySelector(".nps-label") !== null;
+  const isChurnedTable = table.querySelector(".churned-publisher") !== null;
+
+  // For NPS tables, don't allow removing default rows (NETWORK and T1)
+  if (isNpsTable && row.classList.contains("nps-default-row")) {
+    await showCustomAlert(
+      "Cannot remove default rows (NETWORK and T1). Only added rows can be removed.",
+      "Cannot Remove Row",
+      "warning"
+    );
+    return;
+  }
+
+  // For churned tables, don't allow removing the default row
+  if (isChurnedTable && row.classList.contains("churned-default-row")) {
+    await showCustomAlert(
+      "Cannot remove the default row. Only added rows can be removed.",
+      "Cannot Remove Row",
+      "warning"
+    );
+    return;
+  }
+
+  // Don't allow removing if only default rows remain
+  if (isNpsTable) {
+    const addedRows = tbody.querySelectorAll(".nps-added-row");
+    if (addedRows.length <= 1) {
+      await showCustomAlert(
+        "Cannot remove the last added row. At least the default rows must remain.",
+        "Cannot Remove Row",
+        "warning"
+      );
+      return;
+    }
+  }
+
+  if (isChurnedTable) {
+    const addedRows = tbody.querySelectorAll(".churned-added-row");
+    if (addedRows.length <= 1) {
+      await showCustomAlert(
+        "Cannot remove the last added row. At least one row must remain.",
+        "Cannot Remove Row",
+        "warning"
+      );
+      return;
+    }
+  }
+
+  // For other tables, don't allow removing if only one row remains
+  if (!isNpsTable && !isChurnedTable && tbody.children.length <= 1) {
+    await showCustomAlert(
+      "Cannot remove the last row. Tables must have at least one row.",
+      "Cannot Remove Row",
+      "warning"
+    );
+    return;
+  }
+
+  const confirmed = await showCustomConfirm(
+    "Are you sure you want to remove this row?",
+    "Remove Row"
+  );
+
+  if (confirmed) {
+    // Remove the row
+    row.remove();
+
+    // Re-add plus/minus buttons to appropriate rows
+    const rows = tbody.querySelectorAll("tr");
+    rows.forEach((row, index) => {
+      const actionCell = row.querySelector(".row-actions");
+
+      if (isNpsTable) {
+        // For NPS tables: default rows (NETWORK and T1) get plus buttons, added rows get minus buttons
+        const isDefaultRow = row.classList.contains("nps-default-row");
+        if (isDefaultRow) {
+          actionCell.innerHTML = `<button class="add-row-btn" onclick="addRowToTable(this)" title="Add row"><span class="material-icons">add</span></button>`;
+        } else {
+          actionCell.innerHTML = `<button class="remove-row-btn" onclick="removeRowFromTable(this)" title="Remove row"><span class="material-icons">remove</span></button>`;
+        }
+      } else {
+        // For other tables: first row gets plus, last row gets minus
+        if (index === 0) {
+          actionCell.innerHTML = `<button class="add-row-btn" onclick="addRowToTable(this)" title="Add row"><span class="material-icons">add</span></button>`;
+        } else if (index === rows.length - 1) {
+          actionCell.innerHTML = `<button class="remove-row-btn" onclick="removeRowFromTable(this)" title="Remove row"><span class="material-icons">remove</span></button>`;
+        } else {
+          actionCell.innerHTML = "";
+        }
+      }
+    });
+
+    // Trigger auto-save
+    triggerAutoSave();
+  }
 }
