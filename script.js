@@ -1285,6 +1285,9 @@ function addTableEventListeners(tableWrapper) {
       }
     });
   });
+
+  // Add rich text functionality to specific fields in this table
+  addRichTextFunctionality();
 }
 
 // Function to add event listeners to row elements
@@ -3408,12 +3411,26 @@ document.addEventListener("DOMContentLoaded", function () {
   clearAllTablesOnly();
   console.log("Cleared existing tables");
 
-  // Initialize tab navigation
-  console.log("Initializing Executive Summary Tool with VIEW-ONLY section...");
+  // Initialize tab navigation - set Reader as default
+  console.log(
+    "Initializing Executive Summary Tool with Reader section as default..."
+  );
 
-  // Load saved reports on startup
+  // Hide header actions since Reader is the default tab
+  const headerActions = document.querySelector(".header-actions");
+  if (headerActions) {
+    headerActions.style.display = "none";
+  }
+
+  // Load saved reports on startup and open most recent report
   if (document.getElementById("view-only-content")) {
-    console.log("VIEW-ONLY section found, loading saved reports...");
+    console.log("Reader section found, loading saved reports...");
+    loadSavedReports();
+
+    // Automatically open the most recently saved report
+    setTimeout(() => {
+      openMostRecentReport();
+    }, 100);
   }
 
   // Always ensure tables are available - first try to load saved data, then ensure defaults exist
@@ -3530,6 +3547,15 @@ document.addEventListener("DOMContentLoaded", function () {
       console.log("Periodic auto-save at:", new Date().toLocaleTimeString());
     }
   }, 30000);
+
+  // Initialize rich text editor and functionality after everything is loaded
+  setTimeout(() => {
+    initializeRichTextEditor();
+    addRichTextFunctionality();
+
+    // Test function to verify rich text functionality (remove in production)
+    // testRichTextFunctionality();
+  }, 500);
 });
 
 // Function to generate mobile-friendly card layout for tables
@@ -4558,6 +4584,16 @@ function viewSavedReport(reportId) {
   document.querySelector(".saved-reports-container").style.display = "none";
   document.getElementById("report-viewer").style.display = "block";
 
+  // Update the report viewer header with the report title
+  const reportViewerHeader = document.querySelector(".report-viewer-header");
+  reportViewerHeader.innerHTML = `
+    <button class="btn btn-secondary" onclick="backToReportsList()">← Back to Reports</button>
+    <div class="report-title-header">
+      <h2>${report.title}</h2>
+      <div class="report-date">Saved: ${report.formattedDate}</div>
+    </div>
+  `;
+
   // Render the report content
   renderViewOnlyReport(report.data);
 }
@@ -4569,6 +4605,19 @@ function showSavedReportsList() {
 
 function backToReportsList() {
   showSavedReportsList();
+}
+
+function openMostRecentReport() {
+  const savedReports = JSON.parse(localStorage.getItem("savedReports") || "[]");
+
+  if (savedReports.length > 0) {
+    // Get the most recent report (first in array since they're stored with newest first)
+    const mostRecentReport = savedReports[0];
+    console.log("Opening most recent report:", mostRecentReport.title);
+    viewSavedReport(mostRecentReport.id);
+  } else {
+    console.log("No saved reports found to open automatically");
+  }
 }
 
 // Helper function to check if table data has meaningful content
@@ -4669,6 +4718,11 @@ function renderViewOnlyReport(reportData) {
       reportContent.appendChild(sectionElement);
     }
   });
+
+  // Add rich text functionality to the rendered content
+  setTimeout(() => {
+    addRichTextFunctionality();
+  }, 100);
 }
 
 // Function to create view-only table from saved data
@@ -6308,4 +6362,174 @@ async function removeRowFromTable(button) {
     // Trigger auto-save
     triggerAutoSave();
   }
+}
+
+// Rich Text Editor functionality
+let richTextEditor = null;
+let currentRichTextField = null;
+
+// Initialize rich text editor (will be called from main initialization)
+function initializeRichTextEditor() {
+  try {
+    richTextEditor = new Quill("#rich-text-editor", {
+      theme: "snow",
+      modules: {
+        toolbar: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ list: "ordered" }, { list: "bullet" }],
+          [{ indent: "-1" }, { indent: "+1" }],
+          [{ color: [] }, { background: [] }],
+          [{ align: [] }],
+          ["link"],
+          ["clean"],
+        ],
+      },
+      placeholder: "Enter your content here...",
+    });
+  } catch (error) {
+    console.error("Error initializing Quill editor:", error);
+  }
+}
+
+// Function to open rich text editor
+function openRichTextEditor(element, fieldName) {
+  currentRichTextField = element;
+
+  // Set modal title
+  document.getElementById(
+    "rich-text-modal-title"
+  ).textContent = `Edit ${fieldName}`;
+
+  // Get current content (strip HTML tags for plain text, or keep HTML for rich content)
+  const currentContent = element.innerHTML || "";
+
+  // Set content in editor
+  richTextEditor.root.innerHTML = currentContent;
+
+  // Show modal
+  document.getElementById("rich-text-modal").style.display = "flex";
+
+  // Focus editor
+  setTimeout(() => {
+    richTextEditor.focus();
+  }, 100);
+}
+
+// Function to close rich text editor
+function closeRichTextEditor() {
+  document.getElementById("rich-text-modal").style.display = "none";
+  currentRichTextField = null;
+}
+
+// Function to save rich text content
+function saveRichTextContent() {
+  if (currentRichTextField && richTextEditor) {
+    // Get HTML content from editor
+    const content = richTextEditor.root.innerHTML;
+
+    // Update the field with new content
+    currentRichTextField.innerHTML = content;
+
+    // Trigger auto-save
+    triggerAutoSave();
+
+    // Close modal
+    closeRichTextEditor();
+  }
+}
+
+// Function to add rich text functionality to specific fields
+function addRichTextFunctionality() {
+  // Define the selectors for fields that should have rich text editing
+  const richTextSelectors = [
+    ".observations-cell",
+    ".test-status-cell",
+    ".demand-status-cell",
+    ".progress-status-cell",
+    ".updates-issues",
+    ".updates-steps",
+    ".mobile-row-data.observations",
+    ".mobile-row-data.status",
+  ];
+
+  // Define field names for modal titles
+  const fieldNames = {
+    "observations-cell": "Observations",
+    "test-status-cell": "Test Status",
+    "demand-status-cell": "Demand Status",
+    "progress-status-cell": "Status",
+    "updates-issues": "Issues/Updates",
+    "updates-steps": "Next Steps",
+    "mobile-row-data observations": "Content",
+    "mobile-row-data status": "Status",
+  };
+
+  richTextSelectors.forEach((selector) => {
+    const elements = document.querySelectorAll(selector);
+    elements.forEach((element) => {
+      // Skip elements that are in view-only mode
+      if (
+        element.closest(".view-only") ||
+        element.closest(".viewed-report-content")
+      ) {
+        return;
+      }
+
+      // Add rich text field class and click handler
+      element.classList.add("rich-text-field");
+
+      // Add double-click event listener for rich text editor
+      element.addEventListener("dblclick", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Determine field name from class or context
+        let fieldName = "Content";
+
+        // Check desktop field classes first
+        for (const [className, name] of Object.entries(fieldNames)) {
+          if (element.classList.contains(className)) {
+            fieldName = name;
+            break;
+          }
+        }
+
+        // For mobile fields, check the label in the same row
+        if (element.classList.contains("mobile-row-data")) {
+          const row = element.closest(".mobile-row");
+          if (row) {
+            const label = row.querySelector(".mobile-row-label");
+            if (label) {
+              const labelText = label.textContent.trim().toUpperCase();
+              if (labelText.includes("OBSERVATION")) {
+                fieldName = "Observations";
+              } else if (labelText.includes("TEST STATUS")) {
+                fieldName = "Test Status";
+              } else if (labelText.includes("DEMAND STATUS")) {
+                fieldName = "Demand Status";
+              } else if (labelText === "STATUS") {
+                fieldName = "Status";
+              } else if (
+                labelText.includes("ISSUE") ||
+                labelText.includes("UPDATE")
+              ) {
+                fieldName = "Issues/Updates";
+              } else if (labelText.includes("NEXT STEPS")) {
+                fieldName = "Next Steps";
+              }
+            }
+          }
+        }
+
+        openRichTextEditor(element, fieldName);
+      });
+
+      // Add placeholder text if empty
+      if (!element.innerHTML.trim()) {
+        element.innerHTML =
+          '<span style="color: #999; font-style: italic;">Double-click for rich text editor...</span>';
+      }
+    });
+  });
 }
